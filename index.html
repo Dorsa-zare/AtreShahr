@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Atr-e Shahr — Persepolis</title>
+<script src="config.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,8 +29,9 @@
 
     <div class="portrait-layout">
       <div class="image-col">
-        <div class="main-image">
+        <div class="main-image" id="mainImageContainer">
           <canvas id="portraitCanvas"></canvas>
+          <img id="generatedPortrait" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;border-radius:6px;" alt="generated portrait">
         </div>
         <div class="image-caption" id="portraitCaption">
           "Ancient columns rising from the plain, the stone still holding the heat of the afternoon. A place that has been a ruin longer than it was a palace — and somehow more powerful for it."
@@ -141,17 +143,24 @@
 </div>
 
 <!-- PAGE 3: ABOUT -->
+<!-- PAGE 3: ABOUT -->
 <div id="page-about" class="page">
   <div style="max-width:580px;margin:0 auto;padding:56px 48px;">
     <h2 style="font-size:28px;font-weight:300;font-style:italic;margin-bottom:16px;">What is Atr-e Shahr?</h2>
     <p style="font-size:14px;font-family:sans-serif;color:#555;line-height:1.85;margin-bottom:16px;">
-      This project began with a personal observation. After returning to my hometown in Iran after a long time away, I noticed how much had changed — and realized there was no way to capture that feeling. The news covers events, maps show geography, but neither preserves what a place actually feels like to the people who live in it, love it, or had to leave it.
+      Atr-e Shahr means "the perfume of the city" in Farsi, the invisible essence a place leaves on the people who have known it.
     </p>
     <p style="font-size:14px;font-family:sans-serif;color:#555;line-height:1.85;margin-bottom:16px;">
-      Vigil asks: can an AI system, fed enough human memory, produce something that feels true to a place? Everyone who leaves a memory here — diaspora, resident, visitor — contributes to a collective portrait of Persepolis that shifts and deepens over time.
+      This project began with a personal observation. After returning to my hometown in Iran after a long time away, I noticed how much had changed and realized there was no way to capture that feeling. The news covers events, maps show geography, but neither preserves what a place actually feels like to the people who live in it, love it, or had to leave it. When cities go through conflict, protest, or slow transformation, the emotional record disappears. What remains is political coverage, not human memory.
+    </p>
+    <p style="font-size:14px;font-family:sans-serif;color:#555;line-height:1.85;margin-bottom:16px;">
+      Atr-e Shahr is a platform where anyone, diaspora, resident, visitor, or someone who simply loves a place, can contribute a short memory, feeling, or observation. These fragments are read by an AI that extracts their sensory and emotional content, building them into a collective prompt. An image AI then paints a portrait of that place from those accumulated memories, updating gradually as new voices arrive.
+    </p>
+    <p style="font-size:14px;font-family:sans-serif;color:#555;line-height:1.85;margin-bottom:16px;">
+      Over time you can watch the portrait shift, shaped not by cameras or official narratives, but by what people actually felt standing there. The goal is to preserve the essence of a place from the people who felt it.
     </p>
     <p style="font-size:14px;font-family:sans-serif;color:#555;line-height:1.85;margin-bottom:32px;">
-      The goal is to preserve the essence of a place from the people who felt it — not from whoever controls the narrative.
+      Can an AI system, fed enough human memory, produce something that feels true to a place? That is the question this project is trying to answer.
     </p>
     <button class="nav-btn" onclick="showPage('compose')">add a memory</button>
   </div>
@@ -172,6 +181,7 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  window.db = db;
 
   window.saveMemory = async function(text, origin) {
     await addDoc(collection(db, "memories"), {
@@ -193,6 +203,9 @@
 </script>
 
 <script>
+const ANTHROPIC_KEY = typeof _ANTHROPIC_KEY !== 'undefined' ? _ANTHROPIC_KEY : '';
+const OPENAI_KEY = typeof _OPENAI_KEY !== 'undefined' ? _OPENAI_KEY : '';
+
 // ── DATA ──────────────────────────────────────────────────────────────
 const memories = [
   { text: '"The columns at sunset — the shadows they cast are longer than anything I have seen. I stood there until the guards asked me to leave."', time: '2 hours ago', mood: 'awe', from: 'diaspora' },
@@ -464,6 +477,81 @@ async function buildMemFeed() {
   `).join('');
 }
 
+async function loadLatestPortrait() {
+  if (!window.firebaseReady) return;
+  try {
+    const { getFirestore, collection, getDocs, orderBy, query, limit } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    const q = query(collection(window.db, 'portraits'), orderBy('timestamp', 'desc'), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+    const latest = snapshot.docs[0].data();
+    if (!latest.imageUrl) return;
+    const generatedImg = document.getElementById('generatedPortrait');
+    const portraitCanvas = document.getElementById('portraitCanvas');
+    generatedImg.onload = () => {
+      portraitCanvas.style.display = 'none';
+      generatedImg.style.display = 'block';
+      generatedImg.style.opacity = '1';
+      if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
+    };
+    generatedImg.src = latest.imageUrl;
+    if (latest.voiceCount) {
+      document.getElementById('portraitMeta').textContent = latest.voiceCount + ' voices · updated recently';
+    }
+  } catch(e) {
+    console.log('no saved portrait yet', e);
+  }
+}
+
+async function loadPortraitHistory() {
+  if (!window.firebaseReady) return;
+  try {
+    const { getFirestore, collection, getDocs, orderBy, query } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+    const q = query(collection(window.db, 'portraits'), orderBy('timestamp', 'asc'));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+    const portraits = snapshot.docs.map(doc => doc.data());
+    const row = document.getElementById('tlThumbs');
+    row.innerHTML = '';
+    portraits.forEach((p, i) => {
+      const wrap = document.createElement('div');
+      wrap.style = 'flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;';
+      const thumb = document.createElement('div');
+      thumb.style = 'width:100%;aspect-ratio:1;border-radius:4px;overflow:hidden;border:1px solid #e0dbd2;background:#e8e4dc;';
+      const img = document.createElement('img');
+      img.src = p.imageUrl;
+      img.style = 'width:100%;height:100%;object-fit:cover;display:block;';
+      thumb.appendChild(img);
+      const lbl = document.createElement('div');
+      lbl.className = 'tl-thumb-label';
+      lbl.textContent = p.voiceCount + ' voices';
+      wrap.appendChild(thumb);
+      wrap.appendChild(lbl);
+      wrap.onclick = () => showPortraitVersion(p.imageUrl, p.voiceCount);
+      row.appendChild(wrap);
+    });
+    const pct = 100;
+    document.getElementById('tlFill').style.width = pct + '%';
+    document.getElementById('tlHandle').style.left = pct + '%';
+    document.getElementById('tlHandle').style.right = 'auto';
+  } catch(e) {
+    console.log('could not load portrait history', e);
+  }
+}
+
+function showPortraitVersion(imageUrl, voiceCount) {
+  const generatedImg = document.getElementById('generatedPortrait');
+  const portraitCanvas = document.getElementById('portraitCanvas');
+  if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
+  generatedImg.onload = () => {
+    portraitCanvas.style.display = 'none';
+    generatedImg.style.display = 'block';
+    generatedImg.style.opacity = '1';
+  };
+  generatedImg.src = imageUrl;
+  document.getElementById('portraitMeta').textContent = voiceCount + ' voices · this generation';
+}
+
 // ── COMPOSE ───────────────────────────────────────────────────────────
 function selectOrigin(el) {
   document.querySelectorAll('.origin-btn').forEach(b => b.classList.remove('sel'));
@@ -499,6 +587,28 @@ const aiFeedbacks = [
 
 let feedbackIdx = 0;
 
+async function callClaude(text) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      messages: [{
+        role: 'user',
+        content: `Someone left this memory about Persepolis: "${text}"\n\nIn one sentence, describe what sensory or emotional detail this adds to the collective portrait. Then on a new line write just: Mood: [one word]. Be poetic and brief.`
+      }]
+    })
+  });
+  const data = await response.json();
+  return data.content[0].text;
+}
+
 function onType() {
   clearTimeout(typeTimer);
   const val = document.getElementById('memInput').value;
@@ -506,22 +616,118 @@ function onType() {
     document.getElementById('aiFeedback').classList.remove('show');
     return;
   }
-  typeTimer = setTimeout(() => {
-    document.getElementById('aiText').innerHTML = aiFeedbacks[feedbackIdx % aiFeedbacks.length];
-    feedbackIdx++;
+  typeTimer = setTimeout(async () => {
+    document.getElementById('aiText').innerHTML = 'reading your memory...';
     document.getElementById('aiFeedback').classList.add('show');
+    try {
+      const result = await callClaude(val);
+      document.getElementById('aiText').innerHTML = result.replace(/\n/g, '<br>');
+    } catch(e) {
+      document.getElementById('aiText').innerHTML = 'Could not read memory right now.';
+    }
   }, 900);
+}
+
+async function generatePortraitImage(memoriesText) {
+  const basePrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, painted as a romantic orientalist oil painting in the style of Eugene Flandin, warm ochre and sienna palette, golden late afternoon light, no people, no modern elements, consistent composition across generations, ${memoriesText}`;
+  const response = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'dall-e-3',
+      prompt: basePrompt,
+      n: 1,
+      size: '1792x1024',
+      style: 'vivid',
+      quality: 'standard'
+    })
+  });
+
+  const data = await response.json();
+  return data.data[0].url;
+}
+
+async function updatePortraitWithMemories() {
+  if (!window.loadMemories) return;
+  const docs = await window.loadMemories();
+  if (docs.length === 0) return;
+
+  const recentMemories = docs.slice(0, 5).map(m => m.text).join(', ');
+
+  const moodResponse = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 80,
+      messages: [{
+        role: 'user',
+        content: `These are recent memories people left about Persepolis: "${recentMemories}". Extract 5 to 8 vivid sensory or visual details as a short comma separated list. Only return the list, nothing else.`
+      }]
+    })
+  });
+
+  const moodData = await moodResponse.json();
+  const visualDetails = moodData.content[0].text;
+
+  const imageUrl = await generatePortraitImage(visualDetails);
+  const generatedImg = document.getElementById('generatedPortrait');
+  const canvas = document.getElementById('portraitCanvas');
+  
+  generatedImg.onload = () => {
+    canvas.style.display = 'none';
+    generatedImg.style.display = 'block';
+    generatedImg.style.position = 'absolute';
+    generatedImg.style.top = '0';
+    generatedImg.style.left = '0';
+    generatedImg.style.width = '100%';
+    generatedImg.style.height = '100%';
+    generatedImg.style.objectFit = 'cover';
+    generatedImg.style.borderRadius = '6px';
+    if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
+    console.log('portrait updated with DALL-E image', generatedImg.src);
+  };
+  generatedImg.onerror = (e) => {
+    console.error('image load error', e);
+    console.log('attempted URL:', imageUrl);
+  };
+  generatedImg.src = imageUrl;
+  
+  document.getElementById('portraitCaption').textContent = `"${visualDetails}"`;
+  await saveImageToFirebase(imageUrl, docs.length);
+}
+
+async function saveImageToFirebase(imageUrl, voiceCount) {
+  if (!window.firebaseReady) return;
+  const { getFirestore, collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+  await addDoc(collection(window.db, 'portraits'), {
+    imageUrl: imageUrl,
+    voiceCount: voiceCount,
+    timestamp: new Date()
+  });
 }
 
 async function submitMemory() {
   const val = document.getElementById('memInput').value.trim();
   if (!val) return;
   const origin = document.querySelector('.origin-btn.sel')?.textContent || 'anonymous';
+
   if (window.saveMemory) {
     await window.saveMemory(val, origin);
   }
+
   document.getElementById('submitSection').style.display = 'none';
   document.getElementById('successState').classList.add('show');
+
+  updatePortraitWithMemories();
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────
@@ -551,6 +757,8 @@ window.addEventListener('resize', () => {
 
 document.addEventListener('firebaseReady', () => {
   buildMemFeed();
+  loadLatestPortrait();
+  loadPortraitHistory();
 });
 setTimeout(() => {
   if (!window.firebaseReady) buildMemFeed();
@@ -566,4 +774,3 @@ setTimeout(() => {
 </script>
 </body>
 </html>
-

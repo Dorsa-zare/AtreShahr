@@ -82,7 +82,8 @@
 
   /* image */
   .image-col {}
-  .main-image {
+.main-image {
+    position: relative;
     width: 100%;
     aspect-ratio: 16/10;
     border-radius: 6px;
@@ -96,7 +97,7 @@
     height: 100%;
     object-fit: cover;
     display: block;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.8s ease;
     position: absolute;
     top: 0; left: 0;
