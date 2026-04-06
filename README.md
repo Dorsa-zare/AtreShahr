@@ -1,11 +1,14 @@
 **Vigil**
 **A Generative AI System for Collective Memory**
 
-
-
 **Overview:**
 Vigil is an interactive web project where users submit anonymous memories about Persepolis. These memories are interpreted by AI and transformed into images, which are placed inside a navigable 3D gallery.
 Instead of a static archive, the space evolves over time, becoming a collective, spatial representation of memory.
+
+
+<img width="959" height="469" alt="image" src="https://github.com/user-attachments/assets/c2bf90fa-6dfc-47e9-ae38-f9d0589d6080" />
+
+
 
 
 
