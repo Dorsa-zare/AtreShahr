@@ -248,7 +248,9 @@ const canvas = document.getElementById('portraitCanvas');
 const ctx = canvas.getContext('2d');
 let currentPortraitImageUrl = null;
 let portraitsHistory = [];
+let memoryOriginById = new Map();
 let memoryFeedData = memories.map((memory, index) => ({
+  id: '',
   text: memory.text,
   label: memory.time || 'recently',
   mood: memory.mood || 'memory',
@@ -545,6 +547,23 @@ function originFromLegacySide(side = '') {
   return String(side || '').trim().toLowerCase() === 'day' ? 'in the diaspora' : 'from Iran';
 }
 
+function refreshMemoryOriginLookup(items = []) {
+  memoryOriginById = new Map();
+  items.forEach(item => {
+    if (!item?.id) return;
+    memoryOriginById.set(item.id, normalizeOriginTag(item.origin));
+  });
+}
+
+function resolvePortraitOrigin(record) {
+  const memoryId = typeof record?.memoryId === 'string' ? record.memoryId : '';
+  if (memoryId && memoryOriginById.has(memoryId)) {
+    return memoryOriginById.get(memoryId);
+  }
+
+  return normalizeOriginTag(record?.origin || originFromLegacySide(record?.side || ''));
+}
+
 function inferPortraitSide(record, fallbackIndex = 0, totalCount = 1) {
   if (record?.origin) return getSkySideFromOrigin(record.origin);
   if (record?.side === 'day' || record?.side === 'night') return getSkySideFromOrigin(originFromLegacySide(record.side));
@@ -565,7 +584,7 @@ function inferPortraitSide(record, fallbackIndex = 0, totalCount = 1) {
 
 function normalizePortraitRecord(record) {
   if (!record || !isUsablePortraitImage(record.imageUrl)) return null;
-  const origin = normalizeOriginTag(record.origin || originFromLegacySide(record.side));
+  const origin = resolvePortraitOrigin(record);
   return {
     memoryId: typeof record.memoryId === 'string' ? record.memoryId : '',
     memoryText: typeof record.memoryText === 'string' ? record.memoryText : '',
@@ -682,7 +701,11 @@ function mergePortraitSources(firestorePortraits = []) {
         voiceCount: Math.max(existing.voiceCount || 0, item.voiceCount || 0),
         caption: existing.caption || item.caption || resolvePortraitCaption(item),
         timestamp: Math.min(existing.timestamp || item.timestamp, item.timestamp || existing.timestamp),
-        origin: normalizeOriginTag(existing.origin || item.origin || originFromLegacySide(existing.side || item.side))
+        origin: resolvePortraitOrigin({
+          memoryId: existing.memoryId || item.memoryId || '',
+          origin: existing.origin || item.origin || '',
+          side: existing.side || item.side || ''
+        })
       });
     });
 
@@ -1099,28 +1122,38 @@ async function buildMemFeed() {
     const docs = await window.loadMemories();
     if (docs.length > 0) {
       memoryFeedData = docs.map((m, index) => ({
+        id: m.id || '',
         text: m.text || '',
         label: 'recently',
         origin: normalizeOriginTag(m.origin),
         index
       }));
+      refreshMemoryOriginLookup(memoryFeedData);
       renderGroupedMemories(memoryFeedData);
       memoryPanelState.streamIndex = 0;
       restartMemoryStream();
-      if (portraitsHistory.length) initMemoryGallery(portraitsHistory);
+      if (portraitsHistory.length) {
+        portraitsHistory = mergePortraitSources(portraitsHistory);
+        initMemoryGallery(portraitsHistory);
+      }
       return;
     }
   }
   memoryFeedData = memories.map((m, index) => ({
+    id: '',
     text: m.text || '',
     label: m.time || 'recently',
     origin: normalizeOriginTag(m.from),
     index
   }));
+  refreshMemoryOriginLookup(memoryFeedData);
   renderGroupedMemories(memoryFeedData);
   memoryPanelState.streamIndex = 0;
   restartMemoryStream();
-  if (portraitsHistory.length) initMemoryGallery(portraitsHistory);
+  if (portraitsHistory.length) {
+    portraitsHistory = mergePortraitSources(portraitsHistory);
+    initMemoryGallery(portraitsHistory);
+  }
 }
 
 function renderMemoryStreamItem() {
@@ -1434,6 +1467,10 @@ function buildGalleryMeshes(portraits) {
     day: [],
     night: []
   };
+  const placedPositionsBySide = {
+    day: [],
+    night: []
+  };
 
   portraits.forEach((portrait, index) => {
     const side = getSkySideFromOrigin(portrait.origin);
@@ -1469,33 +1506,56 @@ function buildGalleryMeshes(portraits) {
       const side = getSkySideFromOrigin(portrait.origin);
       const sideOrder = sideIndices[side].indexOf(index);
       const rankFromLatest = sideOrder === -1 ? 0 : (sideIndices[side].length - 1 - sideOrder);
-      const depthBands = [-8.2, -11.8, 1.4];
+      const depthBands = [-8.4, -12.8, 3.4];
       const depth = isOpeningPair
         ? -10.6
         : depthBands[Math.min(rankFromLatest, depthBands.length - 1)];
       const slotPatterns = side === 'day'
         ? [
-            { x: 5.25, y: 0.74, scale: 1.2, zOffset: 0 },
-            { x: 2.45, y: 1.1, scale: 1.12, zOffset: 0 },
-            { x: 10.8, y: 2.28, scale: 1.1, zOffset: 2.2 },
-            { x: 4.9, y: 1.18, scale: 0.94, zOffset: 4.1 }
+            { x: 6.3, y: 0.88, scale: 1.2, zOffset: 0 },
+            { x: 2.9, y: 1.42, scale: 1.12, zOffset: 0.6 },
+            { x: 12.8, y: 2.9, scale: 1.1, zOffset: 3.4 },
+            { x: 6.7, y: 1.62, scale: 0.94, zOffset: 5.6 }
           ]
         : [
-            { x: -6.05, y: 0.74, scale: 1.2, zOffset: 0 },
-            { x: -2.45, y: 1.1, scale: 1.12, zOffset: 0 },
-            { x: -10.2, y: 2.28, scale: 1.1, zOffset: 2.2 },
-            { x: -4.8, y: 1.18, scale: 0.94, zOffset: 4.1 }
+            { x: -6.9, y: 0.88, scale: 1.2, zOffset: 0 },
+            { x: -3.2, y: 1.42, scale: 1.12, zOffset: 0.6 },
+            { x: -12.4, y: 2.9, scale: 1.1, zOffset: 3.4 },
+            { x: -6.5, y: 1.62, scale: 0.94, zOffset: 5.6 }
           ];
       const slot = total === 1
-        ? { x: side === 'day' ? 5.25 : -6.05, y: 0.74, scale: 1.2, zOffset: 0 }
+        ? { x: side === 'day' ? 6.3 : -6.9, y: 0.88, scale: 1.2, zOffset: 0 }
         : slotPatterns[Math.min(rankFromLatest, slotPatterns.length - 1)];
       const spreadScale = isOpeningPair
-        ? 1.32
-        : THREE.MathUtils.lerp(1.88, 1.18, progress);
-      const x = slot.x * spreadScale + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.18, 0.06, progress);
-      const z = depth + (slot.zOffset || 0) + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.35, 0.16, progress);
+        ? 1.38
+        : THREE.MathUtils.lerp(2.08, 1.28, progress);
+      let x = slot.x * spreadScale + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.5, 0.18, progress);
+      let z = depth + (slot.zOffset || 0) + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.72, 0.28, progress);
       const baseHeight = isOpeningPair ? 1.2 : THREE.MathUtils.lerp(1.14, 1.0, progress);
-      const y = baseHeight + slot.y * (isOpeningPair ? 0.24 : THREE.MathUtils.lerp(0.46, 0.24, progress)) + (Math.random() - 0.5) * (isOpeningPair ? 0.02 : 0.05);
+      let y = baseHeight + slot.y * (isOpeningPair ? 0.28 : THREE.MathUtils.lerp(0.58, 0.3, progress)) + (Math.random() - 0.5) * (isOpeningPair ? 0.05 : 0.12);
+
+      const placedPositions = placedPositionsBySide[side];
+      const minimumXSeparation = isOpeningPair ? 2.8 : 2.45;
+      const minimumYSeparation = isOpeningPair ? 0.38 : 0.52;
+      const minimumZSeparation = isOpeningPair ? 1.4 : 1.9;
+      let attempts = 0;
+      while (
+        placedPositions.some(position =>
+          Math.abs(position.x - x) < minimumXSeparation &&
+          Math.abs(position.y - y) < minimumYSeparation &&
+          Math.abs(position.z - z) < minimumZSeparation
+        ) &&
+        attempts < 8
+      ) {
+        const horizontalPush = (attempts % 2 === 0 ? 1 : -1) * (1.2 + attempts * 0.42);
+        const depthPush = 0.75 + attempts * 0.26;
+        const verticalPush = (attempts % 3 === 0 ? 1 : -1) * (0.22 + attempts * 0.06);
+        x += horizontalPush;
+        z += depthPush;
+        y += verticalPush;
+        attempts += 1;
+      }
+      placedPositions.push({ x, y, z });
       const isLatestOnSide = latestBySide[side] === index;
       const baseScale = isLatestOnSide ? Math.max(slot.scale || 1, 1.2) : (slot.scale || 1);
 
@@ -1967,6 +2027,18 @@ async function saveImageToFirebase(imageUrl, voiceCount, caption = '', origin = 
 
 // Active portrait loaders: merge Firestore history with local cached generations.
 loadLatestPortrait = async function() {
+  if (window.loadMemories) {
+    try {
+      const memoryDocs = await window.loadMemories();
+      refreshMemoryOriginLookup(memoryDocs.map(memory => ({
+        id: memory.id || '',
+        origin: normalizeOriginTag(memory.origin)
+      })));
+    } catch (e) {
+      console.warn('could not refresh memory origin lookup before latest portrait load', e);
+    }
+  }
+
   let portraits = readLocalPortraitCache();
 
   if (window.firebaseReady) {
@@ -1994,6 +2066,18 @@ loadLatestPortrait = async function() {
 };
 
 loadPortraitHistory = async function() {
+  if (window.loadMemories) {
+    try {
+      const memoryDocs = await window.loadMemories();
+      refreshMemoryOriginLookup(memoryDocs.map(memory => ({
+        id: memory.id || '',
+        origin: normalizeOriginTag(memory.origin)
+      })));
+    } catch (e) {
+      console.warn('could not refresh memory origin lookup before portrait history load', e);
+    }
+  }
+
   let portraits = readLocalPortraitCache();
 
   if (window.firebaseReady) {
