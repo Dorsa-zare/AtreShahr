@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vigil — Persepolis</title>
-<script src="config.js"></script>
 <script src="three.min.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -222,8 +221,22 @@
 </script>
 
 <script>
-const ANTHROPIC_KEY = typeof _ANTHROPIC_KEY !== 'undefined' ? _ANTHROPIC_KEY : '';
-const OPENAI_KEY = typeof _OPENAI_KEY !== 'undefined' ? _OPENAI_KEY : '';
+async function postJson(url, payload) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Request failed');
+  }
+
+  return data;
+}
 
 // ── DATA ──────────────────────────────────────────────────────────────
 const memories = [
@@ -1853,14 +1866,18 @@ function selectOrigin(el) {
 
 let typeTimer = null;
 
+function containsPersian(text = '') {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(String(text || ''));
+}
+
 function buildMemoryFallback(text) {
   const normalized = String(text || '').trim().toLowerCase();
   let mood = 'reflective';
 
-  if (/(miss|longing|far|away|remember|diaspora|left)/.test(normalized)) mood = 'longing';
-  else if (/(stone|column|ruin|ancient|history|relief)/.test(normalized)) mood = 'reverent';
-  else if (/(light|sun|gold|glow|shadow|dawn|sunset)/.test(normalized)) mood = 'awe';
-  else if (/(father|mother|grandmother|family|child|home)/.test(normalized)) mood = 'tender';
+  if (/(miss|longing|far|away|remember|diaspora|left|دلتنگ|دوری|دور|یاد|خاطره|غربت|مهاجرت)/.test(normalized)) mood = 'longing';
+  else if (/(stone|column|ruin|ancient|history|relief|سنگ|ستون|ویرانه|باستان|تاریخ|نقش)/.test(normalized)) mood = 'reverent';
+  else if (/(light|sun|gold|glow|shadow|dawn|sunset|نور|آفتاب|خورشید|طلایی|درخشش|سایه|طلوع|غروب)/.test(normalized)) mood = 'awe';
+  else if (/(father|mother|grandmother|family|child|home|پدر|مادر|مادربزرگ|خانواده|کودک|خانه)/.test(normalized)) mood = 'tender';
 
   return `Your memory adds another human trace to Persepolis, carrying texture, atmosphere, and feeling into the gallery.<br>Mood: ${mood}`;
 }
@@ -1869,11 +1886,11 @@ function buildVisualDetailsFallback(memories = []) {
   const joined = memories.join(' ').toLowerCase();
   const details = ['weathered stone', 'memory haze', 'quiet atmosphere'];
 
-  if (/(light|sun|glow|shadow|dawn|sunset)/.test(joined)) details.push('long angled light');
-  if (/(dust|air|wind|sand)/.test(joined)) details.push('dust in the air');
-  if (/(blue|night|far|diaspora|away|distance)/.test(joined)) details.push('distant blue-toned mood');
-  if (/(family|father|mother|grandmother|child|home)/.test(joined)) details.push('human warmth carried through the ruins');
-  if (/(column|stairs|relief|stone|ruin)/.test(joined)) details.push('ancient columns and carved stone');
+  if (/(light|sun|glow|shadow|dawn|sunset|نور|آفتاب|خورشید|درخشش|سایه|طلوع|غروب)/.test(joined)) details.push('long angled light');
+  if (/(dust|air|wind|sand|گرد|غبار|هوا|باد|شن)/.test(joined)) details.push('dust in the air');
+  if (/(blue|night|far|diaspora|away|distance|آبی|شب|دور|غربت|فاصله)/.test(joined)) details.push('distant blue-toned mood');
+  if (/(family|father|mother|grandmother|child|home|خانواده|پدر|مادر|مادربزرگ|کودک|خانه)/.test(joined)) details.push('human warmth carried through the ruins');
+  if (/(column|stairs|relief|stone|ruin|ستون|پله|نقش|سنگ|ویرانه)/.test(joined)) details.push('ancient columns and carved stone');
 
   return Array.from(new Set(details)).slice(0, 6).join(', ');
 }
@@ -1881,15 +1898,15 @@ function buildVisualDetailsFallback(memories = []) {
 function buildIranMoodDirection(memoryContext = '') {
   const text = String(memoryContext || '').toLowerCase();
 
-  if (/(war|bomb|missile|attack|grief|mourning|sad|gloom|fear|afraid|empty|closed|loss|destroyed|pain)/.test(text)) {
+  if (/(war|bomb|missile|attack|grief|mourning|sad|gloom|fear|afraid|empty|closed|loss|destroyed|pain|جنگ|بمب|موشک|حمله|عزا|غم|ترس|خالی|بسته|از دست|ویران|درد)/.test(text)) {
     return 'somber wartime atmosphere, overcast or dim light, muted stone tones, heavier shadows, dusty gray air, emotionally weighty and restrained, not glorious, not triumphant, not celebratory';
   }
 
-  if (/(longing|miss|distance|far|diaspora|memory|remember|absence)/.test(text)) {
+  if (/(longing|miss|distance|far|diaspora|memory|remember|absence|دلتنگ|دوری|فاصله|دور|غربت|خاطره|یاد|نبود)/.test(text)) {
     return 'melancholic remembered atmosphere, softened light, quiet emptiness, subtle haze, restrained color, emotionally reflective rather than triumphant';
   }
 
-  if (/(hope|spring|flowers|return|visit again|alive|warmth|family|childhood)/.test(text)) {
+  if (/(hope|spring|flowers|return|visit again|alive|warmth|family|childhood|امید|بهار|گل|بازگشت|زنده|گرما|خانواده|کودکی)/.test(text)) {
     return 'gentle human warmth, softened late light, weathered beauty, grounded hope, emotionally tender rather than monumental';
   }
 
@@ -1897,34 +1914,15 @@ function buildIranMoodDirection(memoryContext = '') {
 }
 
 async function callClaude(text) {
-  if (!ANTHROPIC_KEY) {
-    return buildMemoryFallback(text);
-  }
+  const multilingualInstruction = containsPersian(text)
+    ? 'The memory may be written in Persian (Farsi). Understand it fully and write your response in English.'
+    : 'The memory is in English. Respond in English.';
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 100,
-      messages: [{
-        role: 'user',
-        content: `Someone left this memory about Persepolis: "${text}"\n\nIn one sentence, describe what sensory or emotional detail this adds to the collective memory gallery. Then on a new line write just: Mood: [one word]. Be poetic and brief.`
-      }]
-    })
+  const data = await postJson('/api/memory-feedback', {
+    text,
+    instruction: `${multilingualInstruction}\n\nSomeone left this memory about Persepolis: "${text}"\n\nIn one sentence, describe what sensory or emotional detail this adds to the collective memory gallery. Then on a new line write just: Mood: [one word]. Be poetic and brief.`
   });
-
-  if (!response.ok) {
-    throw new Error(`Claude request failed with status ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.content?.[0]?.text || buildMemoryFallback(text).replace(/<br>/g, '\n');
+  return data.text || buildMemoryFallback(text).replace(/<br>/g, '\n');
 }
 
 function onType() {
@@ -1949,33 +1947,18 @@ function onType() {
 async function generatePortraitImage(memoriesText, originSide = 'night', memoryContext = '') {
   const normalizedSide = originSide === 'day' ? 'day' : 'night';
   const iranMoodDirection = buildIranMoodDirection(memoryContext);
-  const iranPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, realistic remembered atmosphere, weathered stone, dusty air, ${iranMoodDirection}, no people, no modern elements, grounded and place-real, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting, ${memoriesText}`;
-  const diasporaPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, dark blue aged memory filter, cooler blue-gray palette, dreamy and softly morphed atmosphere, slightly less realistic, more distant and haunted, subtle blur, haze, faded old-image color cast, poetic remembered place, no people, no modern elements, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting, ${memoriesText}`;
+  const multilingualMemoryNote = containsPersian(`${memoriesText} ${memoryContext}`)
+    ? `The following memory details may include Persian (Farsi). Understand their meaning and reflect them faithfully in the image: ${memoriesText}.`
+    : `Memory details to incorporate: ${memoriesText}.`;
+  const iranPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, realistic remembered atmosphere, weathered stone, dusty air, ${iranMoodDirection}, no people, no modern elements, grounded and place-real, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting. ${multilingualMemoryNote}`;
+  const diasporaPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, dark blue aged memory filter, cooler blue-gray palette, dreamy and softly morphed atmosphere, slightly less realistic, more distant and haunted, subtle blur, haze, faded old-image color cast, poetic remembered place, no people, no modern elements, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting. ${multilingualMemoryNote}`;
   const basePrompt = normalizedSide === 'day' ? diasporaPrompt : iranPrompt;
   const imageStyle = normalizedSide === 'day' ? 'natural' : 'vivid';
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt: basePrompt,
-      n: 1,
-      size: '1792x1024',
-      style: imageStyle,
-      quality: 'standard',
-      response_format: 'b64_json'
-    })
+  const data = await postJson('/api/generate-image', {
+    prompt: basePrompt,
+    style: imageStyle
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error?.message || 'Image generation failed');
-  }
-
-  const base64 = data.data?.[0]?.b64_json;
+  const base64 = data.b64_json;
   if (!base64) {
     throw new Error('Image generation did not return base64 image data');
   }
@@ -1991,35 +1974,17 @@ async function updatePortraitWithMemories(targetMemory = null) {
   const recentMemories = docs.slice(0, 5).map(m => m.text).join(', ');
   let visualDetails = buildVisualDetailsFallback(docs.slice(0, 5).map(m => m.text || ''));
 
-  if (ANTHROPIC_KEY) {
-    try {
-      const moodResponse = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': ANTHROPIC_KEY,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 80,
-          messages: [{
-            role: 'user',
-            content: `These are recent memories people left about Persepolis: "${recentMemories}". Extract 5 to 8 vivid sensory or visual details as a short comma separated list. Only return the list, nothing else.`
-          }]
-        })
-      });
-
-      if (moodResponse.ok) {
-        const moodData = await moodResponse.json();
-        visualDetails = moodData.content?.[0]?.text || visualDetails;
-      } else {
-        console.warn('Could not extract visual details from Anthropic response', moodResponse.status);
-      }
-    } catch (error) {
-      console.warn('Could not reach Anthropic for visual details fallback', error);
-    }
+  try {
+    const visualDetailsInstruction = containsPersian(recentMemories)
+      ? 'These memories may be written in Persian (Farsi) or English. Understand either language and return the visual details in English.'
+      : 'These memories are in English. Return the visual details in English.';
+    const moodData = await postJson('/api/visual-details', {
+      recentMemories,
+      instruction: `${visualDetailsInstruction}\n\nThese are recent memories people left about Persepolis: "${recentMemories}". Extract 5 to 8 vivid sensory or visual details as a short comma separated list. Only return the list, nothing else.`
+    });
+    visualDetails = moodData.text || visualDetails;
+  } catch (error) {
+    console.warn('Could not reach visual details service, using fallback', error);
   }
 
   const linkedMemory = targetMemory || docs[0];
@@ -2223,7 +2188,8 @@ async function submitMemory() {
     document.getElementById('submitSection').style.display = '';
     document.getElementById('successState').classList.remove('show');
     document.getElementById('aiFeedback').classList.add('show');
-    document.getElementById('aiText').innerHTML = 'Your comment was saved, but the new image could not be generated right now.';
+    const message = error?.message || 'Your comment was saved, but the new image could not be generated right now.';
+    document.getElementById('aiText').innerHTML = message;
   } finally {
     if (submitButton) {
       submitButton.disabled = false;

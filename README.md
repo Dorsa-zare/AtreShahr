@@ -1,56 +1,73 @@
-**Vigil**
-**A Generative AI System for Collective Memory**
+# Vigil
 
-**Overview:**
-Vigil is an interactive web project where users submit anonymous memories about Persepolis. These memories are interpreted by AI and transformed into images, which are placed inside a navigable 3D gallery.
-Instead of a static archive, the space evolves over time, becoming a collective, spatial representation of memory.
+Vigil is a generative AI system for collective memory. Visitors submit anonymous memories about Persepolis, those memories are interpreted into mood and sensory detail, and the gallery evolves into a shared visual archive inside a navigable 3D space.
 
+<img width="959" height="469" alt="Vigil preview" src="https://github.com/user-attachments/assets/c2bf90fa-6dfc-47e9-ae38-f9d0589d6080" />
 
-<img width="959" height="469" alt="image" src="https://github.com/user-attachments/assets/c2bf90fa-6dfc-47e9-ae38-f9d0589d6080" />
+## Overview
 
+Instead of a static archive, Vigil treats memory as something spatial and cumulative. New memories shape the imagery over time, turning the project into a living record of place, feeling, and distance.
 
+## How It Works
 
+- Users write a memory
+- AI interprets mood and sensory details
+- DALL·E generates an image
+- The image is placed in a 3D gallery built with Three.js
+- Newer memories appear closer while older ones recede
 
+## Tech Stack
 
-**How It Works:**
+- HTML, CSS, JavaScript
+- Three.js
+- Firebase Firestore
+- Anthropic Claude
+- OpenAI DALL·E 3
+- Local Node.js server for API proxying
 
-Users write a memory
+## Run Locally
 
-Claude interprets mood + sensory details
+1. Open a terminal in this project folder:
 
-DALL·E generates an image
+```powershell
+cd C:\Users\do2ri\OneDrive\Documents\Vigil
+```
 
-The image is placed in a 3D gallery (Three.js)
+2. Create a local `.env` file from `.env.example`.
 
-Newer memories appear closer; older ones recede
+3. Add your own API keys to `.env`:
 
+```env
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
+PORT=3000
+```
 
-**Tech Stack:**
+4. Start the app:
 
-HTML, CSS, JavaScript
+```powershell
+npm start
+```
 
-Three.js
+5. Open:
 
-Firebase (Firestore + Storage)
+```text
+http://localhost:3000
+```
 
-Claude (text interpretation)
+## Notes
 
-DALL·E 3 (image generation)
+- API keys are not included in this repository.
+- The current app uses `server.js` for AI requests.
+- `config.js` is a legacy file from the earlier browser-only version and is not required for the current setup.
+- `.env` is ignored by git and should stay local.
 
+## Links
 
-**Concept:**
-Vigil explores whether AI can represent memory or if it reshapes it.
+- Live: https://dorsa-zare.github.io/Vigil/
+- GitHub: https://github.com/Dorsa-zare/Vigil
 
+## Created By
 
-**Links:**
-
-Live: https://dorsa-zare.github.io/Vigil/
-
-GitHub: https://github.com/Dorsa-zare/Vigil
-
-
-**Created by:**
-
-Dorsa Zare
-
-Computation Arts — Concordia University
+Dorsa Zare  
+Computation Arts, Concordia University

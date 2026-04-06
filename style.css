@@ -1,11 +1,12 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: Georgia, serif;
-    background: #04070d;
-    color: #eef4ff;
-    min-height: 100vh;
-  }
+body {
+  font-family: Georgia, serif;
+  background: #04070d;
+  color: #eef4ff;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
   /* â”€â”€ NAV â”€â”€ */
   nav {
@@ -600,80 +601,225 @@
     margin-bottom: 14px;
   }
 
-  @media (max-width: 900px) {
-    .portrait-header {
-      max-width: calc(100vw - 80px);
-    }
-    .memory-col {
+@media (max-width: 900px) {
+  nav {
+    padding: 16px 24px;
+  }
+  .nav-links {
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .portrait-header {
+    top: 120px;
+    left: 24px;
+    max-width: calc(100vw - 48px);
+  }
+  .portrait-title {
+    font-size: clamp(40px, 7vw, 52px);
+  }
+  .portrait-subtitle {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .gallery-header {
+    left: 24px;
+    right: 24px;
+    bottom: 28px;
+    max-width: min(460px, calc(100vw - 48px));
+  }
+  .memory-col {
       top: auto;
       bottom: 24px;
+      right: 24px;
+      width: min(360px, calc(100vw - 48px));
       max-height: 42vh;
     }
-    .mem-reopen {
-      top: auto;
-      bottom: 24px;
-    }
+  .memory-col.is-expanded {
+    width: min(360px, calc(100vw - 48px));
   }
+  .mem-reopen {
+    top: auto;
+    right: 24px;
+    bottom: 24px;
+  }
+}
 
-  @media (max-width: 720px) {
-    nav {
-      padding: 16px 20px;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .portrait-header {
-      top: 110px;
-      left: 20px;
-      max-width: calc(100vw - 40px);
-    }
-    .portrait-title {
-      font-size: 34px;
-    }
-    .gallery-header {
-      left: 20px;
-      right: 20px;
-      bottom: 20px;
-      max-width: calc(100vw - 40px);
-    }
-    .memory-col {
-      position: relative;
-      top: auto;
-      right: auto;
-      bottom: auto;
-      width: auto;
-      max-height: none;
-      margin: -96px 20px 28px;
-      z-index: 5;
-    }
-    .memory-col.is-hidden {
-      display: none;
-    }
-    .mem-reopen {
-      position: relative;
-      top: auto;
-      right: auto;
-      bottom: auto;
-      margin: -96px 20px 28px;
-      z-index: 5;
-    }
-    .submit-row,
-    .nav-links,
-    .origin-row {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .compose-page {
-      padding: 22px 18px 20px;
-    }
-    #page-compose.active {
-      padding: 88px 14px 18px;
-      align-items: flex-start;
-    }
-    #page-about.active {
-      padding: 88px 14px 18px;
-      align-items: flex-start;
-    }
-    .about-page {
-      padding: 22px 18px 20px;
-    }
+@media (max-width: 720px) {
+  nav {
+    padding: 14px 16px;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-start;
   }
+  .logo {
+    font-size: 24px;
+  }
+  .nav-links {
+    width: 100%;
+    gap: 10px;
+    justify-content: stretch;
+  }
+  .nav-link,
+  .nav-btn {
+    min-height: 42px;
+  }
+  .nav-link {
+    flex: 1 1 140px;
+    text-align: left;
+  }
+  .nav-btn {
+    width: 100%;
+  }
+  .portrait-layout,
+  .gallery-section,
+  .memory-gallery-shell {
+    min-height: 100svh;
+  }
+  .portrait-header {
+    top: 134px;
+    left: 16px;
+    right: 16px;
+    max-width: none;
+  }
+  .portrait-title {
+    font-size: clamp(30px, 9vw, 40px);
+    line-height: 0.98;
+  }
+  .portrait-subtitle {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .gallery-header {
+    left: 16px;
+    right: 16px;
+    bottom: 18px;
+    gap: 6px;
+    max-width: none;
+  }
+  .gallery-subtitle {
+    max-width: 26rem;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .memory-col {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: min(54vh, 460px);
+    margin: 0;
+    padding: 16px 16px 14px;
+    border-radius: 18px;
+    z-index: 8;
+  }
+  .memory-col.is-expanded {
+    width: auto;
+    max-height: min(68vh, 560px);
+  }
+  .memory-col.is-hidden {
+    display: none;
+  }
+  .mem-stream-card {
+    min-height: 84px;
+  }
+  .mem-text {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .mem-meta {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .mem-reopen {
+    position: fixed;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    margin: 0;
+    z-index: 8;
+  }
+  .submit-row,
+  .nav-links,
+  .origin-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .submit-row {
+    gap: 12px;
+  }
+  .compose-page,
+  .about-page {
+    border-radius: 16px;
+    padding: 20px 16px 18px;
+  }
+  .compose-title,
+  .about-page h2 {
+    font-size: 24px;
+  }
+  .compose-sub,
+  .about-page p {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .compose-textarea {
+    min-height: 150px;
+    font-size: 16px;
+  }
+  #page-compose.active,
+  #page-about.active {
+    padding: calc(82px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  nav {
+    padding: 12px 12px 14px;
+  }
+  .logo {
+    font-size: 22px;
+  }
+  .portrait-header {
+    top: 148px;
+    left: 12px;
+    right: 12px;
+  }
+  .portrait-title {
+    font-size: 28px;
+  }
+  .gallery-header {
+    left: 12px;
+    right: 12px;
+    bottom: 14px;
+  }
+  .gallery-subtitle {
+    font-size: 10px;
+    max-width: 19rem;
+  }
+  .memory-col {
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    max-height: min(58vh, 500px);
+    padding: 14px 14px 12px;
+  }
+  .memory-col.is-expanded {
+    max-height: min(72vh, 580px);
+  }
+  .mem-reopen {
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .compose-page,
+  .about-page {
+    padding: 18px 14px 16px;
+  }
+  .compose-back,
+  .about-close {
+    margin-bottom: 18px;
+  }
+  .success-state {
+    padding: 36px 0 12px;
+  }
+}
