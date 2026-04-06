@@ -25,7 +25,7 @@
   <div class="portrait-page">
     <div class="portrait-header">
       <h1 class="portrait-title">Persepolis</h1>
-      <p class="portrait-subtitle" id="portraitMeta">341 voices · generation 23 · last updated 2 hours ago</p>
+      <p class="portrait-subtitle" id="portraitMeta">341 voices · one shared place in mind</p>
     </div>
 
     <div class="portrait-layout">
@@ -280,6 +280,8 @@ const galleryState = {
   desiredLookTarget: { x: 0, y: 1.15, z: -12 },
   yaw: 0,
   targetYaw: 0,
+  cameraX: 0,
+  targetCameraX: 0,
   cameraY: 1.15,
   targetCameraY: 1.15,
   lookY: 1.15,
@@ -298,6 +300,8 @@ const galleryState = {
 
 const GALLERY_DEFAULT_CAMERA_DISTANCE = -1.2;
 const GALLERY_FOCUS_CAMERA_DISTANCE = -1.85;
+const GALLERY_FOCUS_CAMERA_OFFSET_Z = 3.5;
+const GALLERY_FOCUS_CAMERA_Y_OFFSET = 0.2;
 const GALLERY_WHEEL_STEP = 0.9;
 const GALLERY_MIN_DISTANCE = -8.5;
 const GALLERY_MAX_DISTANCE = 1.4;
@@ -306,9 +310,9 @@ const GALLERY_FOCUS_CAMERA_Y = 1.58;
 const GALLERY_DEFAULT_LOOK_Y = 1.15;
 const GALLERY_FOCUS_LOOK_Y_OFFSET = 0.18;
 const GALLERY_RELEASE_FOCUS_DISTANCE = -7.4;
-const GALLERY_CAPTION_Y_OFFSET = -1.7;
+const GALLERY_CAPTION_Y_OFFSET = -1.22;
 const GALLERY_CAPTION_Z_OFFSET = 0.22;
-const GALLERY_CAPTION_SCALE = { x: 4.8, y: 1.4 };
+const GALLERY_CAPTION_SCALE = { x: 4.4, y: 1.16 };
 const GALLERY_IMAGE_WIDTH = 2.4;
 const GALLERY_IMAGE_HEIGHT = 1.8;
 const GALLERY_BORDER_WIDTH = 2.43;
@@ -316,6 +320,10 @@ const GALLERY_BORDER_HEIGHT = 1.83;
 const GALLERY_FOCUS_STAGE_X = 0;
 const GALLERY_FOCUS_STAGE_Y = 1.28;
 const GALLERY_FOCUS_STAGE_Z = -8.15;
+const GALLERY_ZONE_BOUNDS = {
+  night: { minX: -34, maxX: -4.4, minZ: -26, maxZ: 12 },
+  day: { minX: 4.4, maxX: 30, minZ: -26, maxZ: 12 }
+};
 
 function normalizeAngle(angle) {
   const fullTurn = Math.PI * 2;
@@ -395,7 +403,7 @@ function updateCaptionSprite(caption) {
 
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = 'rgba(244, 248, 255, 0.94)';
-  context.font = '34px Georgia, serif';
+  context.font = '28px Georgia, serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.shadowColor = 'rgba(0, 0, 0, 0.55)';
@@ -404,7 +412,7 @@ function updateCaptionSprite(caption) {
   context.shadowOffsetY = 6;
 
   const lines = wrapCaptionText(context, `"${resolvedCaption}"`, canvas.width - 120);
-  const lineHeight = 44;
+  const lineHeight = 36;
   const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
 
   lines.forEach((line, index) => {
@@ -525,6 +533,27 @@ function applySrgbToTexture(texture) {
 
 function serializeTimestamp(timestamp) {
   return getTimestampValue(timestamp) || Date.now();
+}
+
+function formatRelativeMemoryTime(timestamp) {
+  const value = getTimestampValue(timestamp);
+  if (!value) return 'recently';
+
+  const diffMs = Math.max(0, Date.now() - value);
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  return `${Math.max(1, diffDays)} day${diffDays === 1 ? '' : 's'} ago`;
+}
+
+function formatPortraitMeta(voiceCount = 0) {
+  const count = Number(voiceCount) || 0;
+  const label = count === 1 ? 'voice' : 'voices';
+  return `${count} ${label} · one shared place in mind`;
 }
 
 function normalizeOriginTag(origin = '') {
@@ -776,15 +805,14 @@ function createGallerySkyDome() {
 
   const nightGradient = context.createLinearGradient(0, 0, canvas.width, 0);
   nightGradient.addColorStop(0, '#02050b');
-  nightGradient.addColorStop(0.34, '#07101c');
-  nightGradient.addColorStop(0.56, '#0e1a2d');
-  nightGradient.addColorStop(0.67, '#212739');
-  nightGradient.addColorStop(0.715, '#3a3b44');
-  nightGradient.addColorStop(0.755, '#5e504a');
-  nightGradient.addColorStop(0.82, '#8f6b4f');
-  nightGradient.addColorStop(0.89, '#ba895c');
-  nightGradient.addColorStop(0.94, '#7c5d47');
-  nightGradient.addColorStop(0.975, '#26313f');
+  nightGradient.addColorStop(0.3, '#07101c');
+  nightGradient.addColorStop(0.44, '#0f1a2d');
+  nightGradient.addColorStop(0.485, '#2c3441');
+  nightGradient.addColorStop(0.53, '#5b4f4b');
+  nightGradient.addColorStop(0.61, '#8f6b4f');
+  nightGradient.addColorStop(0.73, '#ba895c');
+  nightGradient.addColorStop(0.87, '#7c5d47');
+  nightGradient.addColorStop(0.95, '#26313f');
   nightGradient.addColorStop(1, '#02050b');
   context.fillStyle = nightGradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
@@ -797,7 +825,7 @@ function createGallerySkyDome() {
   context.fillStyle = verticalFade;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  const sunsetGlow = context.createRadialGradient(canvas.width * 0.84, canvas.height * 0.46, 18, canvas.width * 0.84, canvas.height * 0.46, 220);
+  const sunsetGlow = context.createRadialGradient(canvas.width * 0.72, canvas.height * 0.46, 18, canvas.width * 0.72, canvas.height * 0.46, 250);
   sunsetGlow.addColorStop(0, 'rgba(247, 194, 133, 0.28)');
   sunsetGlow.addColorStop(0.42, 'rgba(214, 134, 76, 0.16)');
   sunsetGlow.addColorStop(0.78, 'rgba(255, 178, 110, 0.05)');
@@ -826,7 +854,7 @@ function createGallerySkyDome() {
   });
 
   const sky = new THREE.Mesh(geometry, material);
-  sky.rotation.y = 0;
+  sky.rotation.y = -1.08;
   return sky;
 }
 
@@ -1062,7 +1090,7 @@ function jumpTo(i) {
   resizeCanvas();
   drawPortrait(1, i);
   document.getElementById('portraitCaption').textContent = '"' + stages[i].caption + '"';
-  document.getElementById('portraitMeta').textContent = stages[i].voices + ' voices · generation ' + (i * 4 + 1) + ' · ' + (i === stages.length-1 ? 'updated 2 hours ago' : stages[i].label);
+  document.getElementById('portraitMeta').textContent = formatPortraitMeta(stages[i].voices);
 }
 
 function startAutoMorph(from, to) {
@@ -1124,7 +1152,7 @@ async function buildMemFeed() {
       memoryFeedData = docs.map((m, index) => ({
         id: m.id || '',
         text: m.text || '',
-        label: 'recently',
+        label: formatRelativeMemoryTime(m.timestamp),
         origin: normalizeOriginTag(m.origin),
         index
       }));
@@ -1232,7 +1260,7 @@ async function loadLatestPortraitLegacy() {
     await renderImageOnCanvas(latest.imageUrl);
     if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
     if (latest.voiceCount) {
-      document.getElementById('portraitMeta').textContent = latest.voiceCount + ' voices';
+      document.getElementById('portraitMeta').textContent = formatPortraitMeta(latest.voiceCount);
     }
   } catch(e) {
     console.log('no saved portrait yet', e);
@@ -1293,7 +1321,7 @@ function showPortraitVersion(imageUrl, voiceCount, caption = '') {
   if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
   renderImageOnCanvas(imageUrl).catch((e) => console.error('image load error', e));
   document.getElementById('portraitCaption').textContent = `"${caption}"`;
-  document.getElementById('portraitMeta').textContent = voiceCount + ' voices · this generation';
+  document.getElementById('portraitMeta').textContent = formatPortraitMeta(voiceCount);
 }
 
 // ── COMPOSE ───────────────────────────────────────────────────────────
@@ -1332,12 +1360,13 @@ function focusGalleryOnPortrait(portrait) {
   if (!matchingMesh) return;
 
   galleryState.targetYaw = galleryState.yaw;
-  galleryState.targetCameraDistance = GALLERY_FOCUS_CAMERA_DISTANCE;
-  galleryState.targetCameraY = GALLERY_FOCUS_CAMERA_Y;
-  galleryState.targetLookY = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
-  galleryState.desiredLookTarget.x = GALLERY_FOCUS_STAGE_X;
-  galleryState.desiredLookTarget.y = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
-  galleryState.desiredLookTarget.z = GALLERY_FOCUS_STAGE_Z;
+  galleryState.targetCameraX = matchingMesh.position.x;
+  galleryState.targetCameraDistance = matchingMesh.position.z + GALLERY_FOCUS_CAMERA_OFFSET_Z;
+  galleryState.targetCameraY = matchingMesh.position.y + GALLERY_FOCUS_CAMERA_Y_OFFSET;
+  galleryState.targetLookY = matchingMesh.position.y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.x = matchingMesh.position.x;
+  galleryState.desiredLookTarget.y = matchingMesh.position.y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.z = matchingMesh.position.z;
   updateCaptionSprite(resolveDisplayedMemoryText(portrait));
 }
 
@@ -1347,12 +1376,13 @@ function focusGalleryMesh(mesh) {
   galleryState.focusedMesh = mesh;
   galleryState.hoveredMesh = mesh;
   galleryState.targetYaw = galleryState.yaw;
-  galleryState.targetCameraDistance = GALLERY_FOCUS_CAMERA_DISTANCE;
-  galleryState.targetCameraY = GALLERY_FOCUS_CAMERA_Y;
-  galleryState.targetLookY = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
-  galleryState.desiredLookTarget.x = GALLERY_FOCUS_STAGE_X;
-  galleryState.desiredLookTarget.y = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
-  galleryState.desiredLookTarget.z = GALLERY_FOCUS_STAGE_Z;
+  galleryState.targetCameraX = mesh.position.x;
+  galleryState.targetCameraDistance = mesh.position.z + GALLERY_FOCUS_CAMERA_OFFSET_Z;
+  galleryState.targetCameraY = mesh.position.y + GALLERY_FOCUS_CAMERA_Y_OFFSET;
+  galleryState.targetLookY = mesh.position.y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.x = mesh.position.x;
+  galleryState.desiredLookTarget.y = mesh.position.y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.z = mesh.position.z;
   updateCaptionSprite(resolveDisplayedMemoryText(mesh.userData));
 }
 
@@ -1366,6 +1396,7 @@ function focusMemoryByIndex(index, totalCount) {
 
 function clearGalleryFocus() {
   galleryState.focusedMesh = null;
+  galleryState.targetCameraX = 0;
   galleryState.targetCameraDistance = Math.max(galleryState.targetCameraDistance, GALLERY_DEFAULT_CAMERA_DISTANCE);
   galleryState.targetCameraY = GALLERY_DEFAULT_CAMERA_Y;
   galleryState.targetLookY = GALLERY_DEFAULT_LOOK_Y;
@@ -1398,7 +1429,7 @@ function initMemoryGallery(portraits) {
     galleryState.scene.background = null;
     galleryState.scene.fog = new THREE.Fog('#111621', 10, 34);
 
-    galleryState.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
+  galleryState.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
     galleryState.camera.position.set(0, 1.15, -1.2);
 
     galleryState.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -1471,7 +1502,6 @@ function buildGalleryMeshes(portraits) {
     day: [],
     night: []
   };
-
   portraits.forEach((portrait, index) => {
     const side = getSkySideFromOrigin(portrait.origin);
     latestBySide[side] = index;
@@ -1506,38 +1536,39 @@ function buildGalleryMeshes(portraits) {
       const side = getSkySideFromOrigin(portrait.origin);
       const sideOrder = sideIndices[side].indexOf(index);
       const rankFromLatest = sideOrder === -1 ? 0 : (sideIndices[side].length - 1 - sideOrder);
-      const depthBands = [-8.4, -12.8, 3.4];
-      const depth = isOpeningPair
-        ? -10.6
-        : depthBands[Math.min(rankFromLatest, depthBands.length - 1)];
-      const slotPatterns = side === 'day'
-        ? [
-            { x: 6.3, y: 0.88, scale: 1.2, zOffset: 0 },
-            { x: 2.9, y: 1.42, scale: 1.12, zOffset: 0.6 },
-            { x: 12.8, y: 2.9, scale: 1.1, zOffset: 3.4 },
-            { x: 6.7, y: 1.62, scale: 0.94, zOffset: 5.6 }
-          ]
-        : [
-            { x: -6.9, y: 0.88, scale: 1.2, zOffset: 0 },
-            { x: -3.2, y: 1.42, scale: 1.12, zOffset: 0.6 },
-            { x: -12.4, y: 2.9, scale: 1.1, zOffset: 3.4 },
-            { x: -6.5, y: 1.62, scale: 0.94, zOffset: 5.6 }
-          ];
-      const slot = total === 1
-        ? { x: side === 'day' ? 6.3 : -6.9, y: 0.88, scale: 1.2, zOffset: 0 }
-        : slotPatterns[Math.min(rankFromLatest, slotPatterns.length - 1)];
-      const spreadScale = isOpeningPair
-        ? 1.38
-        : THREE.MathUtils.lerp(2.08, 1.28, progress);
-      let x = slot.x * spreadScale + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.5, 0.18, progress);
-      let z = depth + (slot.zOffset || 0) + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.72, 0.28, progress);
-      const baseHeight = isOpeningPair ? 1.2 : THREE.MathUtils.lerp(1.14, 1.0, progress);
-      let y = baseHeight + slot.y * (isOpeningPair ? 0.28 : THREE.MathUtils.lerp(0.58, 0.3, progress)) + (Math.random() - 0.5) * (isOpeningPair ? 0.05 : 0.12);
+      const sideSign = side === 'day' ? 1 : -1;
+      const tier = Math.floor(rankFromLatest / 3);
+      const lane = rankFromLatest % 3;
+      const baseDepths = [-10.4, -12.8, -15.4, -18];
+      const laneXOffsets = side === 'day'
+        ? [7.2, 14.2, 21.2]
+        : [7.2, 14.9, 22.1];
+      const laneYOffsets = [1.15, 2.55, 0.75];
+      const laneZOffsets = [0, 0.45, 0.95];
+      const depth = isOpeningPair ? -10.8 : (baseDepths[Math.min(tier, baseDepths.length - 1)] - tier * 0.25);
+      const xBase = (isOpeningPair
+        ? (side === 'day'
+            ? (lane === 0 ? 7.3 : 14.9)
+            : (lane === 0 ? 7.3 : 15.6))
+        : laneXOffsets[Math.min(lane, laneXOffsets.length - 1)]) + tier * 0.65;
+      const yBase = isOpeningPair
+        ? (lane === 0 ? 1.24 : 1.68)
+        : laneYOffsets[Math.min(lane, laneYOffsets.length - 1)] + tier * 0.32;
+      const zBase = depth - laneZOffsets[Math.min(lane, laneZOffsets.length - 1)];
+      const scalePattern = [1.2, 1.08, 0.96];
+      const baseScale = Math.max(0.9, scalePattern[Math.min(lane, scalePattern.length - 1)] - tier * 0.04);
+
+      let x = sideSign * xBase;
+      let z = zBase;
+      let y = yBase;
 
       const placedPositions = placedPositionsBySide[side];
-      const minimumXSeparation = isOpeningPair ? 2.8 : 2.45;
-      const minimumYSeparation = isOpeningPair ? 0.38 : 0.52;
-      const minimumZSeparation = isOpeningPair ? 1.4 : 1.9;
+      const zone = GALLERY_ZONE_BOUNDS[side];
+      const minimumXSeparation = side === 'night'
+        ? (isOpeningPair ? 4.8 : 5.8)
+        : (isOpeningPair ? 4.6 : 5.4);
+      const minimumYSeparation = isOpeningPair ? 0.62 : 0.86;
+      const minimumZSeparation = isOpeningPair ? 1.3 : 1.8;
       let attempts = 0;
       while (
         placedPositions.some(position =>
@@ -1547,20 +1578,24 @@ function buildGalleryMeshes(portraits) {
         ) &&
         attempts < 8
       ) {
-        const horizontalPush = (attempts % 2 === 0 ? 1 : -1) * (1.2 + attempts * 0.42);
-        const depthPush = 0.75 + attempts * 0.26;
-        const verticalPush = (attempts % 3 === 0 ? 1 : -1) * (0.22 + attempts * 0.06);
+        const horizontalPush = (attempts % 2 === 0 ? 1 : -1) * sideSign * (1.5 + attempts * 0.45);
+        const depthPush = 0.7 + attempts * 0.2;
+        const verticalPush = (attempts % 2 === 0 ? 1 : -1) * (0.38 + attempts * 0.1);
         x += horizontalPush;
-        z += depthPush;
+        z -= depthPush;
         y += verticalPush;
+        x = Math.max(zone.minX, Math.min(zone.maxX, x));
+        z = Math.max(zone.minZ, Math.min(zone.maxZ, z));
         attempts += 1;
       }
+      x = Math.max(zone.minX, Math.min(zone.maxX, x));
+      z = Math.max(zone.minZ, Math.min(zone.maxZ, z));
       placedPositions.push({ x, y, z });
       const isLatestOnSide = latestBySide[side] === index;
-      const baseScale = isLatestOnSide ? Math.max(slot.scale || 1, 1.2) : (slot.scale || 1);
+      const resolvedScale = isLatestOnSide ? Math.max(baseScale, 1.2) : baseScale;
 
       mesh.position.set(x, y, z);
-      mesh.scale.set(baseScale, baseScale, 1);
+      mesh.scale.set(resolvedScale, resolvedScale, 1);
       mesh.quaternion.copy(galleryState.camera.quaternion);
       const baseQuaternion = mesh.quaternion.clone();
       mesh.userData = {
@@ -1578,7 +1613,7 @@ function buildGalleryMeshes(portraits) {
         angle: Math.atan2(x, -z),
         focusYaw: Math.atan2(x, -z),
         timelineProgress: progress,
-        baseScale,
+        baseScale: resolvedScale,
         baseQuaternion,
         borderMesh
       };
@@ -1693,11 +1728,12 @@ function animateMemoryGallery() {
   const time = performance.now() * 0.001;
   const yawDelta = normalizeAngle(galleryState.targetYaw - galleryState.yaw);
   galleryState.yaw = normalizeAngle(galleryState.yaw + yawDelta * 0.08);
+  galleryState.cameraX += (galleryState.targetCameraX - galleryState.cameraX) * 0.1;
   galleryState.cameraY += (galleryState.targetCameraY - galleryState.cameraY) * 0.1;
   galleryState.lookY += (galleryState.targetLookY - galleryState.lookY) * 0.1;
   galleryState.cameraDistance += (galleryState.targetCameraDistance - galleryState.cameraDistance) * 0.08;
 
-  galleryState.camera.position.x = 0;
+  galleryState.camera.position.x = galleryState.cameraX;
   galleryState.camera.position.y = galleryState.cameraY;
   galleryState.camera.position.z = galleryState.cameraDistance;
 
@@ -1706,9 +1742,13 @@ function animateMemoryGallery() {
   const dirZ = -Math.cos(galleryState.yaw);
 
   if (galleryState.focusedMesh) {
-    galleryState.desiredLookTarget.x = GALLERY_FOCUS_STAGE_X;
-    galleryState.desiredLookTarget.y = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
-    galleryState.desiredLookTarget.z = GALLERY_FOCUS_STAGE_Z;
+    galleryState.targetCameraX = galleryState.focusedMesh.position.x;
+    galleryState.targetCameraDistance = galleryState.focusedMesh.position.z + GALLERY_FOCUS_CAMERA_OFFSET_Z;
+    galleryState.targetCameraY = galleryState.focusedMesh.position.y + GALLERY_FOCUS_CAMERA_Y_OFFSET;
+    galleryState.targetLookY = galleryState.focusedMesh.position.y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+    galleryState.desiredLookTarget.x = galleryState.focusedMesh.position.x;
+    galleryState.desiredLookTarget.y = galleryState.focusedMesh.position.y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+    galleryState.desiredLookTarget.z = galleryState.focusedMesh.position.z;
   } else {
     galleryState.desiredLookTarget.x = galleryState.camera.position.x + dirX * lookDistance;
     galleryState.desiredLookTarget.y = galleryState.lookY;
@@ -1735,9 +1775,9 @@ function animateMemoryGallery() {
     const driftY = mesh.userData.baseY + Math.sin(time * 1.1 + index * 0.75) * 0.12;
     const driftX = mesh.userData.baseX + Math.cos(time * 0.7 + index * 0.45) * 0.04;
     const driftZ = mesh.userData.baseZ + Math.sin(time * 0.55 + index * 0.6) * 0.08;
-    const targetX = isFocused ? GALLERY_FOCUS_STAGE_X : driftX;
-    const targetY = isFocused ? GALLERY_FOCUS_STAGE_Y : driftY;
-    const targetZ = isFocused ? GALLERY_FOCUS_STAGE_Z : driftZ;
+    const targetX = driftX;
+    const targetY = driftY;
+    const targetZ = driftZ;
     const baseScale = mesh.userData.baseScale || 1;
     const targetScale = isFocused ? Math.max(1.24, baseScale + 0.1) : (isHovered ? baseScale + 0.08 : baseScale);
 
@@ -1748,11 +1788,11 @@ function animateMemoryGallery() {
     mesh.scale.y += (targetScale - mesh.scale.y) * 0.14;
     mesh.renderOrder = 0;
     mesh.material.depthTest = true;
-    mesh.material.opacity += (((isOccludingFocused ? 0.12 : 1) - mesh.material.opacity) * 0.16);
+    mesh.material.opacity += (((isOccludingFocused ? 0.05 : 1) - mesh.material.opacity) * 0.16);
     if (mesh.userData.borderMesh) {
       mesh.userData.borderMesh.renderOrder = 1;
       mesh.userData.borderMesh.material.depthTest = true;
-      mesh.userData.borderMesh.material.opacity += (((isOccludingFocused ? 0.04 : 0.24) - mesh.userData.borderMesh.material.opacity) * 0.16);
+      mesh.userData.borderMesh.material.opacity += (((isOccludingFocused ? 0.015 : 0.24) - mesh.userData.borderMesh.material.opacity) * 0.16);
     }
 
     const targetQuaternion = galleryState.camera.quaternion.clone();
@@ -1766,9 +1806,9 @@ function animateMemoryGallery() {
 
     if (galleryState.focusedMesh && galleryState.captionSprite.visible) {
       galleryState.captionSprite.position.set(
-        GALLERY_FOCUS_STAGE_X,
-        GALLERY_FOCUS_STAGE_Y + GALLERY_CAPTION_Y_OFFSET,
-        GALLERY_FOCUS_STAGE_Z + GALLERY_CAPTION_Z_OFFSET
+        galleryState.focusedMesh.position.x,
+        galleryState.focusedMesh.position.y + GALLERY_CAPTION_Y_OFFSET,
+        galleryState.focusedMesh.position.z + GALLERY_CAPTION_Z_OFFSET
       );
       galleryState.captionSprite.quaternion.copy(galleryState.camera.quaternion);
     }
@@ -1838,6 +1878,24 @@ function buildVisualDetailsFallback(memories = []) {
   return Array.from(new Set(details)).slice(0, 6).join(', ');
 }
 
+function buildIranMoodDirection(memoryContext = '') {
+  const text = String(memoryContext || '').toLowerCase();
+
+  if (/(war|bomb|missile|attack|grief|mourning|sad|gloom|fear|afraid|empty|closed|loss|destroyed|pain)/.test(text)) {
+    return 'somber wartime atmosphere, overcast or dim light, muted stone tones, heavier shadows, dusty gray air, emotionally weighty and restrained, not glorious, not triumphant, not celebratory';
+  }
+
+  if (/(longing|miss|distance|far|diaspora|memory|remember|absence)/.test(text)) {
+    return 'melancholic remembered atmosphere, softened light, quiet emptiness, subtle haze, restrained color, emotionally reflective rather than triumphant';
+  }
+
+  if (/(hope|spring|flowers|return|visit again|alive|warmth|family|childhood)/.test(text)) {
+    return 'gentle human warmth, softened late light, weathered beauty, grounded hope, emotionally tender rather than monumental';
+  }
+
+  return 'grounded remembered atmosphere, weathered stone, dusty air, restrained warmth, emotionally real and not overly glorious';
+}
+
 async function callClaude(text) {
   if (!ANTHROPIC_KEY) {
     return buildMemoryFallback(text);
@@ -1888,9 +1946,10 @@ function onType() {
   }, 900);
 }
 
-async function generatePortraitImage(memoriesText, originSide = 'night') {
+async function generatePortraitImage(memoriesText, originSide = 'night', memoryContext = '') {
   const normalizedSide = originSide === 'day' ? 'day' : 'night';
-  const iranPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, realistic remembered atmosphere, weathered stone, dusty air, warm ochre and sienna palette, late afternoon light, no people, no modern elements, grounded and place-real, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting, ${memoriesText}`;
+  const iranMoodDirection = buildIranMoodDirection(memoryContext);
+  const iranPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, realistic remembered atmosphere, weathered stone, dusty air, ${iranMoodDirection}, no people, no modern elements, grounded and place-real, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting, ${memoriesText}`;
   const diasporaPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, dark blue aged memory filter, cooler blue-gray palette, dreamy and softly morphed atmosphere, slightly less realistic, more distant and haunted, subtle blur, haze, faded old-image color cast, poetic remembered place, no people, no modern elements, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting, ${memoriesText}`;
   const basePrompt = normalizedSide === 'day' ? diasporaPrompt : iranPrompt;
   const imageStyle = normalizedSide === 'day' ? 'natural' : 'vivid';
@@ -1969,7 +2028,7 @@ async function updatePortraitWithMemories(targetMemory = null) {
   const linkedMemoryId = linkedMemory?.id || '';
   const linkedMemoryText = linkedMemory?.text || '';
 
-  const imageUrl = await generatePortraitImage(visualDetails, portraitSide);
+  const imageUrl = await generatePortraitImage(visualDetails, portraitSide, linkedMemoryText || recentMemories);
   try {
     await renderImageOnCanvas(imageUrl);
     if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
@@ -2061,7 +2120,7 @@ loadLatestPortrait = async function() {
   document.getElementById('portraitCaption').textContent = `"${resolvePortraitCaption(latest)}"`;
   if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
   if (latest.voiceCount) {
-    document.getElementById('portraitMeta').textContent = latest.voiceCount + ' voices';
+    document.getElementById('portraitMeta').textContent = formatPortraitMeta(latest.voiceCount);
   }
 };
 
