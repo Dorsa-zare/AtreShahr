@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atr-e Shahr — Persepolis</title>
+<title>Vigil — Persepolis</title>
 <script src="config.js"></script>
 <script src="three.min.js"></script>
 <link rel="stylesheet" href="style.css">
@@ -12,9 +12,9 @@
 
 <!-- NAV -->
 <nav>
-  <div class="logo" onclick="showPage('portrait')">Atr-e Shahr</div>
+  <div class="logo" onclick="showPage('portrait')">Vigil</div>
   <div class="nav-links">
-    <button class="nav-link active" id="nl-portrait" onclick="showPage('portrait')">portrait</button>
+    <button class="nav-link active" id="nl-portrait" onclick="showPage('portrait')">memory gallery</button>
     <button class="nav-link" id="nl-about" onclick="showPage('about')">about</button>
     <button class="nav-btn" onclick="showPage('compose')">add a memory</button>
   </div>
@@ -39,7 +39,7 @@
         </div>
 
         <div class="timeline-section">
-          <div class="tl-label">portrait history — drag to travel back</div>
+          <div class="tl-label">memory history — drag to travel back</div>
           <div class="tl-wrap">
             <div class="tl-track" id="tlTrack">
               <div class="tl-fill" id="tlFill" style="width:100%;"></div>
@@ -64,7 +64,7 @@
         <section class="gallery-section">
           <div class="gallery-header">
             <div class="gallery-label">memory gallery</div>
-            <p class="gallery-subtitle">Move your mouse to drift through past generations. Click a portrait to open it.</p>
+            <p class="gallery-subtitle">Hold left click and drag to look around. Scroll to move closer. Click an image or memory to focus it.</p>
           </div>
           <div class="memory-gallery-shell">
             <div id="memoryGallery"></div>
@@ -72,11 +72,26 @@
         </section>
       </div>
 
-      <div class="memory-col">
-        <div class="mem-label">memories left here</div>
+      <div class="memory-col" id="memoryCol">
+        <div class="mem-stream" id="memStream">
+          <div class="mem-stream-label">latest memory</div>
+          <div class="mem-stream-card" id="memStreamCard" tabindex="0" role="button" aria-label="Open current comment"></div>
+          <div class="mem-stream-actions">
+            <button class="mem-toggle" type="button" onclick="setMemoryPanelExpanded(true)" aria-label="Open all comments">open all</button>
+            <button class="mem-toggle" id="memToggleClose" type="button" onclick="toggleMemoryPanel(false)" aria-label="Hide comments">close</button>
+          </div>
+        </div>
+        <div class="mem-head">
+          <div class="mem-label">memories left here</div>
+          <div class="mem-head-actions">
+            <button class="mem-toggle" type="button" onclick="setMemoryPanelExpanded(false)" aria-label="Collapse comments">collapse</button>
+            <button class="mem-toggle" type="button" onclick="toggleMemoryPanel(false)" aria-label="Hide comments">close</button>
+          </div>
+        </div>
         <div class="mem-list" id="memList"></div>
         <button class="add-mem-btn" onclick="showPage('compose')">+ leave your memory</button>
       </div>
+      <button class="mem-reopen" id="memReopen" type="button" onclick="toggleMemoryPanel(true)" aria-label="Show comments">comments</button>
     </div>
   </div>
 </div>
@@ -84,16 +99,15 @@
 <!-- PAGE 2: COMPOSE -->
 <div id="page-compose" class="page">
   <div class="compose-page">
-    <button class="compose-back" onclick="showPage('portrait')">← back to portrait</button>
+    <button class="compose-back" onclick="showPage('portrait')">← back to gallery</button>
     <h2 class="compose-title">Leave a memory</h2>
-    <p class="compose-sub">Your words — and a photo if you have one — become part of Persepolis's living portrait. Anonymous, no account needed.</p>
+    <p class="compose-sub">Your words become part of Persepolis's collective memory gallery. Anonymous, no account needed.</p>
 
     <div class="field-group">
       <span class="field-label">you are</span>
       <div class="origin-row">
         <button class="origin-btn sel" onclick="selectOrigin(this)">from Iran</button>
         <button class="origin-btn" onclick="selectOrigin(this)">in the diaspora</button>
-        <button class="origin-btn" onclick="selectOrigin(this)">visited once</button>
       </div>
     </div>
 
@@ -105,25 +119,6 @@
         placeholder="Write whatever comes — a smell, the light at a certain hour, something you felt standing there, something you carry with you..."
         oninput="onType()"
       ></textarea>
-    </div>
-
-    <div class="field-group">
-      <span class="field-label">add a photo (optional)</span>
-      <div class="photo-upload" id="uploadArea" onclick="document.getElementById('photoInput').click()">
-        <div class="upload-icon">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 2v8M3 6l4-4 4 4" stroke="#aaa" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M2 11h10" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div class="upload-label">Upload a photo of Persepolis</div>
-        <div class="upload-sub">Your photo feeds the portrait generation</div>
-      </div>
-      <div class="photo-preview" id="photoPreview">
-        <img id="photoImg" src="" alt="preview">
-        <button class="photo-remove" onclick="removePhoto()">✕</button>
-      </div>
-      <input type="file" id="photoInput" accept="image/*" onchange="handlePhoto(this)">
     </div>
 
     <div class="ai-feedback" id="aiFeedback">
@@ -144,12 +139,12 @@
           <path d="M3 8l3.5 3.5L13 4" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <div class="success-title">Your memory has been left.</div>
-      <div class="success-body">
-        It is now part of Atr-e Shahr's living portrait.<br>
+      <div class="success-title" id="successTitle">Your memory has been left.</div>
+      <div class="success-body" id="successBody">
+        It is now part of Vigil's collective memory gallery.<br>
         The image will shift with the next generation.
       </div>
-      <button class="success-link" onclick="showPage('portrait')">see the portrait →</button>
+      <button class="success-link" onclick="showPage('portrait')">see the gallery →</button>
     </div>
   </div>
 </div>
@@ -159,35 +154,23 @@
 <div id="page-about" class="page">
   <div class="about-page">
     <button class="about-close" onclick="closeAbout()">close</button>
-    <h2>What is Atr-e Shahr?</h2>
+    <h2>What is Vigil?</h2>
     <p>
-      Atr-e Shahr means "the perfume of the city" in Farsi, the invisible essence a place leaves on the people who have known it.
+      Vigil is a collective memory gallery for place, shaped by the memories people leave behind.
     </p>
     <p>
       This project began with a personal observation. After returning to my hometown in Iran after a long time away, I noticed how much had changed and realized there was no way to capture that feeling. The news covers events, maps show geography, but neither preserves what a place actually feels like to the people who live in it, love it, or had to leave it. When cities go through conflict, protest, or slow transformation, the emotional record disappears. What remains is political coverage, not human memory.
     </p>
     <p>
-      Atr-e Shahr is a platform where anyone, diaspora, resident, visitor, or someone who simply loves a place, can contribute a short memory, feeling, or observation. These fragments are read by an AI that extracts their sensory and emotional content, building them into a collective prompt. An image AI then paints a portrait of that place from those accumulated memories, updating gradually as new voices arrive.
+      Vigil is a platform where anyone, diaspora, resident, visitor, or someone who simply loves a place, can contribute a short memory, feeling, or observation. These fragments are read by an AI that extracts their sensory and emotional content, building them into a collective prompt. An image AI then builds a shifting gallery of that place from those accumulated memories, updating gradually as new voices arrive.
     </p>
     <p>
-      Over time you can watch the portrait shift, shaped not by cameras or official narratives, but by what people actually felt standing there. The goal is to preserve the essence of a place from the people who felt it.
+      Over time you can watch the gallery shift, shaped not by cameras or official narratives, but by what people actually felt standing there. The goal is to preserve the essence of a place from the people who felt it.
     </p>
     <p>
       Can an AI system, fed enough human memory, produce something that feels true to a place? That is the question this project is trying to answer.
     </p>
     <button class="nav-btn" onclick="showPage('compose')">add a memory</button>
-  </div>
-</div>
-
-<div class="gallery-overlay" id="galleryOverlay" aria-hidden="true">
-  <div class="gallery-overlay-backdrop" id="galleryOverlayBackdrop"></div>
-  <div class="gallery-overlay-card">
-    <button class="gallery-overlay-close" id="galleryOverlayClose" aria-label="Close gallery overlay">close</button>
-    <img id="galleryOverlayImage" alt="Selected portrait">
-    <div class="gallery-overlay-meta">
-      <span>voices</span>
-      <strong id="galleryOverlayVoiceCount">0</strong>
-    </div>
   </div>
 </div>
 
@@ -209,18 +192,29 @@
   window.db = db;
 
   window.saveMemory = async function(text, origin) {
-    await addDoc(collection(db, "memories"), {
+    const timestamp = new Date();
+    const docRef = await addDoc(collection(db, "memories"), {
       text: text,
       origin: origin,
-      timestamp: new Date(),
+      timestamp: timestamp,
       city: "persepolis"
     });
+    return {
+      id: docRef.id,
+      text,
+      origin,
+      timestamp,
+      city: "persepolis"
+    };
   };
 
   window.loadMemories = async function() {
     const q = query(collection(db, "memories"), orderBy("timestamp", "desc"));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => doc.data());
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
   };
 
   window.firebaseReady = true;
@@ -254,6 +248,19 @@ const canvas = document.getElementById('portraitCanvas');
 const ctx = canvas.getContext('2d');
 let currentPortraitImageUrl = null;
 let portraitsHistory = [];
+let memoryFeedData = memories.map((memory, index) => ({
+  text: memory.text,
+  label: memory.time || 'recently',
+  mood: memory.mood || 'memory',
+  origin: memory.from || 'from Iran',
+  side: String(memory.from || '').toLowerCase().includes('diaspora') ? 'day' : 'night',
+  index
+}));
+const memoryPanelState = {
+  expanded: false,
+  streamIndex: 0,
+  intervalId: null
+};
 
 const galleryState = {
   container: null,
@@ -263,17 +270,151 @@ const galleryState = {
   raycaster: null,
   grid: null,
   starfield: null,
+  skyDome: null,
+  roundedMask: null,
+  captionSprite: null,
   meshes: [],
   mouse: { x: 0, y: 0 },
   lookTarget: { x: 0, y: 1.15, z: -12 },
+  desiredLookTarget: { x: 0, y: 1.15, z: -12 },
   yaw: 0,
   targetYaw: 0,
-  cameraDistance: 0.6,
-  targetCameraDistance: 0.6,
+  cameraY: 1.15,
+  targetCameraY: 1.15,
+  lookY: 1.15,
+  targetLookY: 1.15,
+  cameraDistance: -1.2,
+  targetCameraDistance: -1.2,
   lastMouseX: null,
   pointer: null,
+  isDragging: false,
+  dragDistance: 0,
+  suppressNextClick: false,
+  hoveredMesh: null,
+  focusedMesh: null,
   animationFrame: null
 };
+
+const GALLERY_DEFAULT_CAMERA_DISTANCE = -1.2;
+const GALLERY_FOCUS_CAMERA_DISTANCE = -1.85;
+const GALLERY_WHEEL_STEP = 0.9;
+const GALLERY_MIN_DISTANCE = -8.5;
+const GALLERY_MAX_DISTANCE = 1.4;
+const GALLERY_DEFAULT_CAMERA_Y = 1.15;
+const GALLERY_FOCUS_CAMERA_Y = 1.58;
+const GALLERY_DEFAULT_LOOK_Y = 1.15;
+const GALLERY_FOCUS_LOOK_Y_OFFSET = 0.18;
+const GALLERY_RELEASE_FOCUS_DISTANCE = -7.4;
+const GALLERY_CAPTION_Y_OFFSET = -1.7;
+const GALLERY_CAPTION_Z_OFFSET = 0.22;
+const GALLERY_CAPTION_SCALE = { x: 4.8, y: 1.4 };
+const GALLERY_IMAGE_WIDTH = 2.4;
+const GALLERY_IMAGE_HEIGHT = 1.8;
+const GALLERY_BORDER_WIDTH = 2.43;
+const GALLERY_BORDER_HEIGHT = 1.83;
+const GALLERY_FOCUS_STAGE_X = 0;
+const GALLERY_FOCUS_STAGE_Y = 1.28;
+const GALLERY_FOCUS_STAGE_Z = -8.15;
+
+function normalizeAngle(angle) {
+  const fullTurn = Math.PI * 2;
+  let normalized = (angle + Math.PI) % fullTurn;
+  if (normalized < 0) normalized += fullTurn;
+  return normalized - Math.PI;
+}
+
+function alignAngleToReference(target, reference) {
+  const fullTurn = Math.PI * 2;
+  let aligned = target;
+
+  while (aligned - reference > Math.PI) aligned -= fullTurn;
+  while (aligned - reference < -Math.PI) aligned += fullTurn;
+
+  return aligned;
+}
+
+function wrapCaptionText(context, text, maxWidth) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let currentLine = '';
+
+  words.forEach(word => {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (context.measureText(candidate).width <= maxWidth || !currentLine) {
+      currentLine = candidate;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  });
+
+  if (currentLine) lines.push(currentLine);
+  return lines.slice(0, 4);
+}
+
+function createCaptionSprite() {
+  if (!window.THREE) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 300;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  applySrgbToTexture(texture);
+
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    opacity: 0
+  });
+
+  const sprite = new THREE.Sprite(material);
+  sprite.visible = false;
+  sprite.scale.set(GALLERY_CAPTION_SCALE.x, GALLERY_CAPTION_SCALE.y, 1);
+  sprite.userData = { canvas, texture, targetOpacity: 0 };
+  return sprite;
+}
+
+function updateCaptionSprite(caption) {
+  if (!galleryState.captionSprite) return;
+
+  const sprite = galleryState.captionSprite;
+  const canvas = sprite.userData.canvas;
+  const texture = sprite.userData.texture;
+  const context = canvas.getContext('2d');
+  if (!context) return;
+
+  const resolvedCaption = String(caption || '').trim();
+  if (!resolvedCaption) {
+    sprite.userData.targetOpacity = 0;
+    return;
+  }
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = 'rgba(244, 248, 255, 0.94)';
+  context.font = '34px Georgia, serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.shadowColor = 'rgba(0, 0, 0, 0.55)';
+  context.shadowBlur = 18;
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = 6;
+
+  const lines = wrapCaptionText(context, `"${resolvedCaption}"`, canvas.width - 120);
+  const lineHeight = 44;
+  const startY = canvas.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+
+  lines.forEach((line, index) => {
+    context.fillText(line, canvas.width / 2, startY + index * lineHeight);
+  });
+
+  texture.needsUpdate = true;
+  sprite.visible = true;
+  sprite.material.opacity = 0;
+  sprite.userData.targetOpacity = 1;
+}
 
 function resizeCanvas() {
   const parent = canvas.parentElement;
@@ -385,13 +526,90 @@ function serializeTimestamp(timestamp) {
   return getTimestampValue(timestamp) || Date.now();
 }
 
+function normalizeOriginTag(origin = '') {
+  const value = String(origin || '').trim().toLowerCase();
+  if (value.includes('diaspora')) return 'in the diaspora';
+  if (value.includes('iran')) return 'from Iran';
+  return 'from Iran';
+}
+
+function resolveSideFromOrigin(origin = '') {
+  return normalizeOriginTag(origin) === 'in the diaspora' ? 'day' : 'night';
+}
+
+function inferPortraitSide(record, fallbackIndex = 0, totalCount = 1) {
+  if (record?.side === 'day' || record?.side === 'night') return record.side;
+  if (record?.origin) return resolveSideFromOrigin(record.origin);
+  if (!memoryFeedData.length) return 'night';
+
+  const total = Math.max(1, totalCount);
+  const memoryIndex = total <= 1
+    ? memoryFeedData.length - 1
+    : Math.max(
+        0,
+        Math.min(
+          memoryFeedData.length - 1,
+          Math.round((fallbackIndex / (total - 1)) * (memoryFeedData.length - 1))
+        )
+      );
+  return memoryFeedData[memoryIndex]?.side || 'night';
+}
+
 function normalizePortraitRecord(record) {
   if (!record || !isUsablePortraitImage(record.imageUrl)) return null;
   return {
+    memoryId: typeof record.memoryId === 'string' ? record.memoryId : '',
+    memoryText: typeof record.memoryText === 'string' ? record.memoryText : '',
     imageUrl: record.imageUrl,
     voiceCount: record.voiceCount || 0,
-    timestamp: serializeTimestamp(record.timestamp)
+    caption: resolvePortraitCaption(record),
+    timestamp: serializeTimestamp(record.timestamp),
+    origin: normalizeOriginTag(record.origin || record.side || ''),
+    side: record.side === 'day' || record.side === 'night'
+      ? record.side
+      : resolveSideFromOrigin(record.origin || record.side || '')
   };
+}
+
+function resolvePortraitCaption(record) {
+  if (record && typeof record.caption === 'string' && record.caption.trim()) {
+    return record.caption.trim();
+  }
+
+  const voiceCount = Number(record?.voiceCount) || 0;
+  if (voiceCount) {
+    let nearestStage = stages[0];
+    let smallestDiff = Math.abs((stages[0]?.voices || 0) - voiceCount);
+
+    stages.forEach(stage => {
+      const diff = Math.abs((stage.voices || 0) - voiceCount);
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        nearestStage = stage;
+      }
+    });
+
+    if (nearestStage?.caption) return nearestStage.caption;
+  }
+
+  return 'A collected memory from this moment in the gallery.';
+}
+
+function resolveDisplayedMemoryText(record) {
+  if (record && typeof record.memoryText === 'string' && record.memoryText.trim()) {
+    return record.memoryText.trim();
+  }
+
+  return resolvePortraitCaption(record);
+}
+
+function shouldHideAccidentalPortrait(record) {
+  const accidentalComment = `Persepolis has been closed to the public because of the war. I can't wait for it to be over to visit there.`;
+  const memoryText = String(record?.memoryText || '').trim();
+  const origin = normalizeOriginTag(record?.origin || '');
+  const side = record?.side === 'day' || record?.side === 'night' ? record.side : resolveSideFromOrigin(origin);
+
+  return memoryText === accidentalComment && origin === 'from Iran' && side === 'night';
 }
 
 function readLocalPortraitCache() {
@@ -403,6 +621,7 @@ function readLocalPortraitCache() {
     return parsed
       .map(normalizePortraitRecord)
       .filter(Boolean)
+      .filter(record => !shouldHideAccidentalPortrait(record))
       .sort((a, b) => a.timestamp - b.timestamp);
   } catch (e) {
     console.warn('Could not read local portrait cache', e);
@@ -418,11 +637,14 @@ function writeLocalPortraitCache(portraits) {
   }
 }
 
-function cachePortraitLocally(imageUrl, voiceCount, timestamp = Date.now()) {
-  const portrait = normalizePortraitRecord({ imageUrl, voiceCount, timestamp });
+function cachePortraitLocally(imageUrl, voiceCount, caption = '', timestamp = Date.now(), origin = 'from Iran', side = 'night', memoryId = '', memoryText = '') {
+  const portrait = normalizePortraitRecord({ imageUrl, voiceCount, caption, timestamp, origin, side, memoryId, memoryText });
   if (!portrait) return;
 
-  const existing = readLocalPortraitCache().filter(item => item.imageUrl !== portrait.imageUrl);
+  const existing = readLocalPortraitCache().filter(item => {
+    if (portrait.memoryId && item.memoryId) return item.memoryId !== portrait.memoryId;
+    return item.imageUrl !== portrait.imageUrl;
+  });
   existing.push(portrait);
   existing.sort((a, b) => a.timestamp - b.timestamp);
   writeLocalPortraitCache(existing);
@@ -431,27 +653,62 @@ function cachePortraitLocally(imageUrl, voiceCount, timestamp = Date.now()) {
 function mergePortraitSources(firestorePortraits = []) {
   const merged = [...firestorePortraits, ...readLocalPortraitCache()]
     .map(normalizePortraitRecord)
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(record => !shouldHideAccidentalPortrait(record));
 
-  const byImageUrl = new Map();
+  const byPortraitKey = new Map();
 
   merged
     .sort((a, b) => a.timestamp - b.timestamp)
     .forEach(item => {
-      const existing = byImageUrl.get(item.imageUrl);
+      const key = item.memoryId || item.imageUrl;
+      const existing = byPortraitKey.get(key);
       if (!existing) {
-        byImageUrl.set(item.imageUrl, item);
+        byPortraitKey.set(key, item);
         return;
       }
 
-      byImageUrl.set(item.imageUrl, {
+      byPortraitKey.set(key, {
+        memoryId: existing.memoryId || item.memoryId || '',
+        memoryText: existing.memoryText || item.memoryText || '',
         imageUrl: item.imageUrl,
         voiceCount: Math.max(existing.voiceCount || 0, item.voiceCount || 0),
-        timestamp: Math.min(existing.timestamp || item.timestamp, item.timestamp || existing.timestamp)
+        caption: existing.caption || item.caption || resolvePortraitCaption(item),
+        timestamp: Math.min(existing.timestamp || item.timestamp, item.timestamp || existing.timestamp),
+        origin: existing.origin || item.origin,
+        side: existing.side || item.side
       });
     });
 
-  return Array.from(byImageUrl.values()).sort((a, b) => a.timestamp - b.timestamp);
+  return assignSequentialFallbackCaptions(
+    Array.from(byPortraitKey.values()).sort((a, b) => a.timestamp - b.timestamp)
+  );
+}
+
+function assignSequentialFallbackCaptions(portraits = []) {
+  if (!Array.isArray(portraits) || !portraits.length) return [];
+
+  const total = portraits.length;
+  return portraits.map((portrait, index) => {
+    if (portrait?.caption && portrait.caption.trim()) {
+      return {
+        ...portrait,
+        caption: portrait.caption.trim()
+      };
+    }
+
+    const stageIndex = total === 1
+      ? stages.length - 1
+      : Math.max(0, Math.min(
+          stages.length - 1,
+          Math.round((index / (total - 1)) * (stages.length - 1))
+        ));
+
+    return {
+      ...portrait,
+      caption: stages[stageIndex]?.caption || 'A collected memory from this moment in the gallery.'
+    };
+  });
 }
 
 function createGalleryStarfield() {
@@ -479,22 +736,114 @@ function createGalleryStarfield() {
   return new THREE.Points(geometry, material);
 }
 
-function buildDisplayPortraits(portraits, desiredCount = 15) {
-  const usable = portraits.filter(p => p && p.imageUrl);
-  if (!usable.length) return [];
-  if (usable.length >= desiredCount) return usable;
+function createGallerySkyDome() {
+  if (!window.THREE) return null;
 
-  const expanded = [];
-  for (let i = 0; i < desiredCount; i++) {
-    const source = usable[i % usable.length];
-    expanded.push({
-      imageUrl: source.imageUrl,
-      voiceCount: source.voiceCount || 0,
-      timestamp: source.timestamp || Date.now(),
-      displayIndex: i
-    });
-  }
-  return expanded;
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 1024;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+
+  const nightGradient = context.createLinearGradient(0, 0, canvas.width, 0);
+  nightGradient.addColorStop(0, '#02050b');
+  nightGradient.addColorStop(0.34, '#07101c');
+  nightGradient.addColorStop(0.58, '#0e1a2d');
+  nightGradient.addColorStop(0.71, '#212739');
+  nightGradient.addColorStop(0.735, '#454147');
+  nightGradient.addColorStop(0.755, '#6d584f');
+  nightGradient.addColorStop(0.81, '#8f6b4f');
+  nightGradient.addColorStop(0.9, '#ba895c');
+  nightGradient.addColorStop(1, '#7c5d47');
+  context.fillStyle = nightGradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const verticalFade = context.createLinearGradient(0, 0, 0, canvas.height);
+  verticalFade.addColorStop(0, 'rgba(7, 12, 20, 0.14)');
+  verticalFade.addColorStop(0.45, 'rgba(18, 24, 34, 0.12)');
+  verticalFade.addColorStop(0.72, 'rgba(39, 28, 26, 0.2)');
+  verticalFade.addColorStop(1, 'rgba(4, 7, 13, 0.92)');
+  context.fillStyle = verticalFade;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const sunsetGlow = context.createRadialGradient(canvas.width * 0.86, canvas.height * 0.46, 18, canvas.width * 0.86, canvas.height * 0.46, 180);
+  sunsetGlow.addColorStop(0, 'rgba(247, 194, 133, 0.34)');
+  sunsetGlow.addColorStop(0.34, 'rgba(214, 134, 76, 0.2)');
+  sunsetGlow.addColorStop(0.68, 'rgba(255, 178, 110, 0.035)');
+  sunsetGlow.addColorStop(1, 'rgba(255, 170, 112, 0)');
+  context.fillStyle = sunsetGlow;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const twilightBand = context.createLinearGradient(0, canvas.height * 0.58, 0, canvas.height * 0.84);
+  twilightBand.addColorStop(0, 'rgba(255, 196, 128, 0.0)');
+  twilightBand.addColorStop(0.18, 'rgba(209, 132, 78, 0.07)');
+  twilightBand.addColorStop(0.38, 'rgba(92, 84, 99, 0.085)');
+  twilightBand.addColorStop(1, 'rgba(7, 11, 18, 0.0)');
+  context.fillStyle = twilightBand;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  applySrgbToTexture(texture);
+  texture.needsUpdate = true;
+
+  const geometry = new THREE.SphereGeometry(70, 48, 32);
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false
+  });
+
+  const sky = new THREE.Mesh(geometry, material);
+  sky.rotation.y = 0;
+  return sky;
+}
+
+function createRoundedCornerMaskTexture() {
+  if (!window.THREE) return null;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 192;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+
+  const radius = 18;
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#fff';
+  context.beginPath();
+  context.moveTo(radius, 0);
+  context.lineTo(canvas.width - radius, 0);
+  context.quadraticCurveTo(canvas.width, 0, canvas.width, radius);
+  context.lineTo(canvas.width, canvas.height - radius);
+  context.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height);
+  context.lineTo(radius, canvas.height);
+  context.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius);
+  context.lineTo(0, radius);
+  context.quadraticCurveTo(0, 0, radius, 0);
+  context.closePath();
+  context.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function buildDisplayPortraits(portraits) {
+  const filtered = portraits.filter(p => p && p.imageUrl);
+  return filtered.map((portrait, index) => ({
+    memoryId: portrait.memoryId || '',
+    memoryText: portrait.memoryText || '',
+    imageUrl: portrait.imageUrl,
+    voiceCount: portrait.voiceCount || 0,
+    caption: portrait.caption || resolvePortraitCaption(portrait),
+    timestamp: portrait.timestamp || Date.now(),
+    displayIndex: index,
+    origin: normalizeOriginTag(portrait.origin || portrait.side || ''),
+    side: inferPortraitSide(portrait, index, filtered.length)
+  }));
 }
 
 function lerp(a, b, t) { return a + (b - a) * t; }
@@ -713,32 +1062,121 @@ function startAutoMorph(from, to) {
 // ── MEMORY FEED ───────────────────────────────────────────────────────
 async function buildMemFeed() {
   const list = document.getElementById('memList');
+  const renderGroupedMemories = items => {
+    const nightItems = items.filter(item => item.side === 'night');
+    const dayItems = items.filter(item => item.side === 'day');
+    const sections = [
+      { title: 'night · from Iran', items: nightItems },
+      { title: 'day · diaspora', items: dayItems }
+    ].filter(section => section.items.length);
+
+    list.innerHTML = items.map(item => `
+      <div class="mem-item" data-memory-index="${item.index}">
+        <div class="mem-text">${item.text.startsWith('"') ? item.text : `"${item.text}"`}</div>
+        <div class="mem-meta">
+          <span>${item.label}</span>
+          <span>${item.origin}</span>
+        </div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.mem-item').forEach(item => {
+      item.addEventListener('click', () => {
+        focusMemoryByIndex(Number(item.dataset.memoryIndex || 0), items.length);
+      });
+    });
+  };
+
   if (window.loadMemories) {
     const docs = await window.loadMemories();
     if (docs.length > 0) {
-      list.innerHTML = docs.map(m => `
-        <div class="mem-item">
-          <div class="mem-text">"${m.text}"</div>
-          <div class="mem-meta">
-            <span>recently</span>
-            <span class="mem-mood">memory</span>
-            <span>${m.origin}</span>
-          </div>
-        </div>
-      `).join('');
+      memoryFeedData = docs.map((m, index) => ({
+        text: m.text || '',
+        label: 'recently',
+        origin: normalizeOriginTag(m.origin),
+        side: resolveSideFromOrigin(m.origin),
+        index
+      }));
+      renderGroupedMemories(memoryFeedData);
+      memoryPanelState.streamIndex = 0;
+      restartMemoryStream();
+      if (portraitsHistory.length) initMemoryGallery(portraitsHistory);
       return;
     }
   }
-  list.innerHTML = memories.map(m => `
-    <div class="mem-item">
-      <div class="mem-text">${m.text}</div>
-      <div class="mem-meta">
-        <span>${m.time}</span>
-        <span class="mem-mood">${m.mood}</span>
-        <span>${m.from}</span>
-      </div>
+  memoryFeedData = memories.map((m, index) => ({
+    text: m.text || '',
+    label: m.time || 'recently',
+    origin: normalizeOriginTag(m.from),
+    side: resolveSideFromOrigin(m.from),
+    index
+  }));
+  renderGroupedMemories(memoryFeedData);
+  memoryPanelState.streamIndex = 0;
+  restartMemoryStream();
+  if (portraitsHistory.length) initMemoryGallery(portraitsHistory);
+}
+
+function renderMemoryStreamItem() {
+  const streamCard = document.getElementById('memStreamCard');
+  if (!streamCard) return;
+
+  if (!memoryFeedData.length) {
+    streamCard.innerHTML = '<div class="mem-text">No memories yet.</div>';
+    streamCard.onclick = null;
+    return;
+  }
+
+  const safeIndex = ((memoryPanelState.streamIndex % memoryFeedData.length) + memoryFeedData.length) % memoryFeedData.length;
+  const item = memoryFeedData[safeIndex];
+  streamCard.classList.remove('is-visible');
+  window.clearTimeout(streamCard._fadeTimeout);
+  streamCard.innerHTML = `
+    <div class="mem-text">${item.text.startsWith('"') ? item.text : `"${item.text}"`}</div>
+    <div class="mem-meta">
+      <span>${item.label}</span>
+      <span>${item.origin}</span>
     </div>
-  `).join('');
+  `;
+  streamCard.onclick = () => {
+    focusMemoryByIndex(item.index, memoryFeedData.length);
+    setMemoryPanelExpanded(true);
+  };
+  streamCard.onkeydown = event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      focusMemoryByIndex(item.index, memoryFeedData.length);
+      setMemoryPanelExpanded(true);
+    }
+  };
+  streamCard._fadeTimeout = window.setTimeout(() => {
+    streamCard.classList.add('is-visible');
+  }, 24);
+}
+
+function restartMemoryStream() {
+  if (memoryPanelState.intervalId) {
+    window.clearInterval(memoryPanelState.intervalId);
+    memoryPanelState.intervalId = null;
+  }
+
+  renderMemoryStreamItem();
+
+  if (memoryPanelState.expanded || memoryFeedData.length <= 1) return;
+
+  memoryPanelState.intervalId = window.setInterval(() => {
+    memoryPanelState.streamIndex = (memoryPanelState.streamIndex + 1) % memoryFeedData.length;
+    renderMemoryStreamItem();
+  }, 4200);
+}
+
+function setMemoryPanelExpanded(expanded) {
+  memoryPanelState.expanded = Boolean(expanded);
+  const panel = document.getElementById('memoryCol');
+  if (panel) {
+    panel.classList.toggle('is-expanded', memoryPanelState.expanded);
+  }
+  restartMemoryStream();
 }
 
 async function loadLatestPortraitLegacy() {
@@ -755,7 +1193,7 @@ async function loadLatestPortraitLegacy() {
     await renderImageOnCanvas(latest.imageUrl);
     if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
     if (latest.voiceCount) {
-      document.getElementById('portraitMeta').textContent = latest.voiceCount + ' voices · updated recently';
+      document.getElementById('portraitMeta').textContent = latest.voiceCount + ' voices';
     }
   } catch(e) {
     console.log('no saved portrait yet', e);
@@ -799,7 +1237,7 @@ async function loadPortraitHistoryLegacy() {
       lbl.textContent = p.voiceCount + ' voices';
       wrap.appendChild(thumb);
       wrap.appendChild(lbl);
-      wrap.onclick = () => showPortraitVersion(p.imageUrl, p.voiceCount);
+      wrap.onclick = () => showPortraitVersion(p.imageUrl, p.voiceCount, resolveDisplayedMemoryText(p));
       row.appendChild(wrap);
     });
     const pct = 100;
@@ -812,24 +1250,105 @@ async function loadPortraitHistoryLegacy() {
   }
 }
 
-function showPortraitVersion(imageUrl, voiceCount) {
+function showPortraitVersion(imageUrl, voiceCount, caption = '') {
   if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
   renderImageOnCanvas(imageUrl).catch((e) => console.error('image load error', e));
+  document.getElementById('portraitCaption').textContent = `"${caption}"`;
   document.getElementById('portraitMeta').textContent = voiceCount + ' voices · this generation';
 }
 
 // ── COMPOSE ───────────────────────────────────────────────────────────
+function getPortraitForMemoryIndex(index, totalCount = 1) {
+  if (!portraitsHistory.length) return null;
+  if (portraitsHistory.length === 1) return portraitsHistory[0];
+
+  const safeIndex = Math.max(0, index);
+  const safeTotal = Math.max(1, totalCount);
+  const ratio = safeTotal <= 1 ? 1 : 1 - (safeIndex / (safeTotal - 1));
+  const portraitIndex = Math.max(
+    0,
+    Math.min(portraitsHistory.length - 1, Math.round(ratio * (portraitsHistory.length - 1)))
+  );
+
+  return portraitsHistory[portraitIndex];
+}
+
+function getPortraitForMemoryItem(memoryItem, index, totalCount = 1) {
+  if (!memoryItem) return getPortraitForMemoryIndex(index, totalCount);
+
+  const exactMatch = portraitsHistory.find(portrait =>
+    portrait.memoryId && memoryItem.id && portrait.memoryId === memoryItem.id
+  );
+  if (exactMatch) return exactMatch;
+
+  return getPortraitForMemoryIndex(index, totalCount);
+}
+
+function focusGalleryOnPortrait(portrait) {
+  if (!portrait) return;
+
+  const matchingMesh = galleryState.meshes.find(mesh => mesh.userData.imageUrl === portrait.imageUrl) || null;
+  galleryState.focusedMesh = matchingMesh;
+
+  if (!matchingMesh) return;
+
+  galleryState.targetYaw = galleryState.yaw;
+  galleryState.targetCameraDistance = GALLERY_FOCUS_CAMERA_DISTANCE;
+  galleryState.targetCameraY = GALLERY_FOCUS_CAMERA_Y;
+  galleryState.targetLookY = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.x = GALLERY_FOCUS_STAGE_X;
+  galleryState.desiredLookTarget.y = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.z = GALLERY_FOCUS_STAGE_Z;
+  updateCaptionSprite(resolveDisplayedMemoryText(portrait));
+}
+
+function focusGalleryMesh(mesh) {
+  if (!mesh) return;
+
+  galleryState.focusedMesh = mesh;
+  galleryState.hoveredMesh = mesh;
+  galleryState.targetYaw = galleryState.yaw;
+  galleryState.targetCameraDistance = GALLERY_FOCUS_CAMERA_DISTANCE;
+  galleryState.targetCameraY = GALLERY_FOCUS_CAMERA_Y;
+  galleryState.targetLookY = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.x = GALLERY_FOCUS_STAGE_X;
+  galleryState.desiredLookTarget.y = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+  galleryState.desiredLookTarget.z = GALLERY_FOCUS_STAGE_Z;
+  updateCaptionSprite(resolveDisplayedMemoryText(mesh.userData));
+}
+
+function focusMemoryByIndex(index, totalCount) {
+  const portrait = getPortraitForMemoryItem(memoryFeedData[index], index, totalCount);
+  if (!portrait) return;
+
+  showPortraitVersion(portrait.imageUrl, portrait.voiceCount, resolveDisplayedMemoryText(portrait));
+  focusGalleryOnPortrait(portrait);
+}
+
+function clearGalleryFocus() {
+  galleryState.focusedMesh = null;
+  galleryState.targetCameraDistance = Math.max(galleryState.targetCameraDistance, GALLERY_DEFAULT_CAMERA_DISTANCE);
+  galleryState.targetCameraY = GALLERY_DEFAULT_CAMERA_Y;
+  galleryState.targetLookY = GALLERY_DEFAULT_LOOK_Y;
+  galleryState.desiredLookTarget.x = galleryState.camera?.position?.x || 0;
+  galleryState.desiredLookTarget.y = GALLERY_DEFAULT_LOOK_Y;
+  galleryState.desiredLookTarget.z = (galleryState.camera?.position?.z || galleryState.cameraDistance) - 14;
+  updateCaptionSprite('');
+}
+
 function initMemoryGallery(portraits) {
   const container = document.getElementById('memoryGallery');
   if (!container) return;
 
   if (!window.THREE) {
+    updateCaptionSprite('');
     container.innerHTML = '<div class="gallery-fallback">The 3D gallery could not load from the CDN in this browser session.</div>';
     return;
   }
 
   if (!portraits.length) {
-    container.innerHTML = '<div class="gallery-fallback">No saved portrait generations yet. Once a portrait is successfully written to Firestore, the gallery will appear here.</div>';
+    updateCaptionSprite('');
+    container.innerHTML = '<div class="gallery-fallback">No saved memory generations yet. Once a gallery image is successfully written to Firestore, it will appear here.</div>';
     return;
   }
 
@@ -837,16 +1356,21 @@ function initMemoryGallery(portraits) {
 
   if (!galleryState.renderer) {
     galleryState.scene = new THREE.Scene();
-    galleryState.scene.background = new THREE.Color('#04070d');
-    galleryState.scene.fog = new THREE.Fog('#04070d', 10, 34);
+    galleryState.scene.background = null;
+    galleryState.scene.fog = new THREE.Fog('#111621', 10, 34);
 
     galleryState.camera = new THREE.PerspectiveCamera(58, 1, 0.1, 100);
-    galleryState.camera.position.set(0, 1.15, 0.6);
+    galleryState.camera.position.set(0, 1.15, -1.2);
 
     galleryState.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     galleryState.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     applySrgbToRenderer(galleryState.renderer);
     container.appendChild(galleryState.renderer.domElement);
+
+    galleryState.skyDome = createGallerySkyDome();
+    if (galleryState.skyDome) {
+      galleryState.scene.add(galleryState.skyDome);
+    }
 
     galleryState.grid = new THREE.GridHelper(90, 60, 0x6f7d92, 0x1b2636);
     galleryState.grid.position.set(0, -2.9, 0);
@@ -859,15 +1383,21 @@ function initMemoryGallery(portraits) {
       galleryState.scene.add(galleryState.starfield);
     }
 
+    galleryState.captionSprite = createCaptionSprite();
+    if (galleryState.captionSprite) {
+      galleryState.scene.add(galleryState.captionSprite);
+    }
+
     galleryState.raycaster = new THREE.Raycaster();
     galleryState.pointer = new THREE.Vector2();
 
+    container.addEventListener('mousedown', onGalleryMouseDown);
     container.addEventListener('mousemove', onGalleryMouseMove);
     container.addEventListener('mouseleave', onGalleryMouseLeave);
     container.addEventListener('wheel', onGalleryWheel, { passive: false });
     container.addEventListener('click', onGalleryClick);
+    window.addEventListener('mouseup', onGalleryMouseUp);
   }
-
   buildGalleryMeshes(buildDisplayPortraits(portraits));
   resizeMemoryGallery();
 
@@ -886,44 +1416,105 @@ function buildGalleryMeshes(portraits) {
   galleryState.meshes = [];
 
   const loader = new THREE.TextureLoader();
+  if (!galleryState.roundedMask) {
+    galleryState.roundedMask = createRoundedCornerMaskTexture();
+  }
   const total = portraits.length;
-  const baseRadius = Math.max(8.5, 6.5 + total * 0.7);
+  const latestBySide = {
+    day: -1,
+    night: -1
+  };
+  const sideIndices = {
+    day: [],
+    night: []
+  };
+
+  portraits.forEach((portrait, index) => {
+    const side = portrait.side === 'day' ? 'day' : 'night';
+    latestBySide[side] = index;
+    sideIndices[side].push(index);
+  });
 
   portraits.forEach((portrait, index) => {
     loader.load(portrait.imageUrl, texture => {
       applySrgbToTexture(texture);
 
-      const geometry = new THREE.PlaneGeometry(2, 1.5);
+      const geometry = new THREE.PlaneGeometry(GALLERY_IMAGE_WIDTH, GALLERY_IMAGE_HEIGHT);
       const material = new THREE.MeshBasicMaterial({
         map: texture,
+        alphaMap: galleryState.roundedMask,
         transparent: true
       });
       const mesh = new THREE.Mesh(geometry, material);
+      const borderMaterial = new THREE.MeshBasicMaterial({
+        color: 0xf3f5f8,
+        alphaMap: galleryState.roundedMask,
+        transparent: true,
+        opacity: 0.24,
+        side: THREE.DoubleSide
+      });
+      const borderMesh = new THREE.Mesh(new THREE.PlaneGeometry(GALLERY_BORDER_WIDTH, GALLERY_BORDER_HEIGHT), borderMaterial);
+      borderMesh.position.z = -0.002;
+      borderMesh.renderOrder = 1;
+      mesh.add(borderMesh);
 
-      const angle = total === 1
-        ? 0
-        : (index / total) * Math.PI * 2;
-      const radiusJitter = (Math.random() - 0.5) * 6.8;
-      const radius = Math.max(5.8, Math.min(baseRadius + radiusJitter, baseRadius + 4.6));
-      const angleJitter = (Math.random() - 0.5) * 0.22;
-      const finalAngle = angle + angleJitter;
-      const x = Math.sin(finalAngle) * radius + (Math.random() - 0.5) * 0.6;
-      const z = -Math.cos(finalAngle) * radius + (Math.random() - 0.5) * 1.1;
-      const heightBand = (index % 3) - 1;
-      const y = heightBand * 0.75 + (Math.random() - 0.5) * 1.1 + 0.55;
+      const progress = total === 1 ? 1 : index / (total - 1);
+      const isOpeningPair = total === 2;
+      const side = portrait.side === 'day' ? 'day' : 'night';
+      const sideOrder = sideIndices[side].indexOf(index);
+      const rankFromLatest = sideOrder === -1 ? 0 : (sideIndices[side].length - 1 - sideOrder);
+      const depthBands = [-8.2, -11.8, 1.4];
+      const depth = isOpeningPair
+        ? -10.6
+        : depthBands[Math.min(rankFromLatest, depthBands.length - 1)];
+      const slotPatterns = side === 'day'
+        ? [
+            { x: 5.25, y: 0.74, scale: 1.2, zOffset: 0 },
+            { x: 2.45, y: 1.1, scale: 1.12, zOffset: 0 },
+            { x: 10.8, y: 2.28, scale: 1.1, zOffset: 2.2 },
+            { x: 4.9, y: 1.18, scale: 0.94, zOffset: 4.1 }
+          ]
+        : [
+            { x: -6.05, y: 0.74, scale: 1.2, zOffset: 0 },
+            { x: -2.45, y: 1.1, scale: 1.12, zOffset: 0 },
+            { x: -10.2, y: 2.28, scale: 1.1, zOffset: 2.2 },
+            { x: -4.8, y: 1.18, scale: 0.94, zOffset: 4.1 }
+          ];
+      const slot = total === 1
+        ? { x: side === 'day' ? 5.25 : -6.05, y: 0.74, scale: 1.2, zOffset: 0 }
+        : slotPatterns[Math.min(rankFromLatest, slotPatterns.length - 1)];
+      const spreadScale = isOpeningPair
+        ? 1.32
+        : THREE.MathUtils.lerp(1.88, 1.18, progress);
+      const x = slot.x * spreadScale + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.18, 0.06, progress);
+      const z = depth + (slot.zOffset || 0) + (Math.random() - 0.5) * THREE.MathUtils.lerp(0.35, 0.16, progress);
+      const baseHeight = isOpeningPair ? 1.2 : THREE.MathUtils.lerp(1.14, 1.0, progress);
+      const y = baseHeight + slot.y * (isOpeningPair ? 0.24 : THREE.MathUtils.lerp(0.46, 0.24, progress)) + (Math.random() - 0.5) * (isOpeningPair ? 0.02 : 0.05);
+      const isLatestOnSide = latestBySide[side] === index;
+      const baseScale = isLatestOnSide ? Math.max(slot.scale || 1, 1.2) : (slot.scale || 1);
 
       mesh.position.set(x, y, z);
-      mesh.lookAt(0, 0.9, 0);
-      mesh.rotation.y += (Math.random() - 0.5) * 0.04;
-      mesh.rotation.x += (Math.random() - 0.5) * 0.04;
+      mesh.scale.set(baseScale, baseScale, 1);
+      mesh.quaternion.copy(galleryState.camera.quaternion);
+      const baseQuaternion = mesh.quaternion.clone();
       mesh.userData = {
+        memoryId: portrait.memoryId || '',
+        memoryText: portrait.memoryText || '',
         imageUrl: portrait.imageUrl,
         voiceCount: portrait.voiceCount || 0,
+        caption: portrait.caption || resolvePortraitCaption(portrait),
         index,
+        origin: portrait.origin || normalizeOriginTag(portrait.side || ''),
+        side,
         baseX: x,
         baseY: y,
         baseZ: z,
-        angle
+        angle: Math.atan2(x, -z),
+        focusYaw: Math.atan2(x, -z),
+        timelineProgress: progress,
+        baseScale,
+        baseQuaternion,
+        borderMesh
       };
 
       galleryState.scene.add(mesh);
@@ -956,7 +1547,28 @@ function onGalleryMouseMove(event) {
   galleryState.mouse.x = x;
   galleryState.mouse.y = y;
   galleryState.pointer.set(x, y);
-  galleryState.targetYaw -= deltaX * 0.0032;
+  if (!galleryState.isDragging) return;
+  galleryState.dragDistance += Math.abs(deltaX);
+  galleryState.targetYaw = alignAngleToReference(
+    normalizeAngle(galleryState.targetYaw - deltaX * 0.0012),
+    galleryState.yaw
+  );
+}
+
+function onGalleryMouseDown(event) {
+  if (event.button !== 0 || !galleryState.container) return;
+  galleryState.isDragging = true;
+  galleryState.dragDistance = 0;
+  galleryState.lastMouseX = event.clientX;
+  galleryState.container.classList.add('is-dragging');
+}
+
+function onGalleryMouseUp() {
+  if (!galleryState.isDragging || !galleryState.container) return;
+  galleryState.isDragging = false;
+  galleryState.container.classList.remove('is-dragging');
+  galleryState.suppressNextClick = galleryState.dragDistance > 6;
+  galleryState.dragDistance = 0;
 }
 
 function onGalleryMouseLeave() {
@@ -965,27 +1577,47 @@ function onGalleryMouseLeave() {
   galleryState.mouse.y = 0;
   galleryState.lastMouseX = null;
   galleryState.pointer.set(0, 0);
+  if (galleryState.container) {
+    galleryState.container.classList.remove('is-dragging');
+  }
+  galleryState.isDragging = false;
+  galleryState.dragDistance = 0;
+  galleryState.hoveredMesh = null;
+  if (!galleryState.focusedMesh) {
+    galleryState.targetCameraY = GALLERY_DEFAULT_CAMERA_Y;
+    galleryState.targetLookY = GALLERY_DEFAULT_LOOK_Y;
+    galleryState.desiredLookTarget.x = 0;
+    galleryState.desiredLookTarget.y = GALLERY_DEFAULT_LOOK_Y;
+    galleryState.desiredLookTarget.z = galleryState.camera.position.z - 14;
+  }
 }
 
 function onGalleryWheel(event) {
   event.preventDefault();
-  const nextDistance = galleryState.targetCameraDistance + event.deltaY * 0.012;
-  galleryState.targetCameraDistance = Math.max(-6.5, Math.min(2.5, nextDistance));
+  const direction = event.deltaY > 0 ? 1 : -1;
+  const nextDistance = galleryState.targetCameraDistance + direction * GALLERY_WHEEL_STEP;
+  galleryState.targetCameraDistance = Math.max(GALLERY_MIN_DISTANCE, Math.min(GALLERY_MAX_DISTANCE, nextDistance));
+  if (direction > 0 && galleryState.targetCameraDistance >= GALLERY_RELEASE_FOCUS_DISTANCE) {
+    clearGalleryFocus();
+  }
 }
 
 function onGalleryClick(event) {
   if (!galleryState.raycaster || !galleryState.meshes.length || !galleryState.pointer) return;
+  if (galleryState.suppressNextClick) {
+    galleryState.suppressNextClick = false;
+    return;
+  }
 
   onGalleryMouseMove(event);
   galleryState.raycaster.setFromCamera(galleryState.pointer, galleryState.camera);
   const intersects = galleryState.raycaster.intersectObjects(galleryState.meshes);
-  if (!intersects.length) return;
+  if (!intersects.length) {
+    clearGalleryFocus();
+    return;
+  }
 
-  const mesh = intersects[0].object;
-  showGalleryOverlay(mesh.userData);
-
-  mesh.scale.set(1.08, 1.08, 1.08);
-  setTimeout(() => mesh.scale.set(1, 1, 1), 220);
+  focusGalleryMesh(intersects[0].object);
 }
 
 function animateMemoryGallery() {
@@ -993,21 +1625,33 @@ function animateMemoryGallery() {
   if (!galleryState.renderer) return;
 
   const time = performance.now() * 0.001;
-  galleryState.yaw += (galleryState.targetYaw - galleryState.yaw) * 0.08;
+  const yawDelta = normalizeAngle(galleryState.targetYaw - galleryState.yaw);
+  galleryState.yaw = normalizeAngle(galleryState.yaw + yawDelta * 0.08);
+  galleryState.cameraY += (galleryState.targetCameraY - galleryState.cameraY) * 0.1;
+  galleryState.lookY += (galleryState.targetLookY - galleryState.lookY) * 0.1;
   galleryState.cameraDistance += (galleryState.targetCameraDistance - galleryState.cameraDistance) * 0.08;
 
   galleryState.camera.position.x = 0;
-  galleryState.camera.position.y = 1.15;
+  galleryState.camera.position.y = galleryState.cameraY;
   galleryState.camera.position.z = galleryState.cameraDistance;
 
   const lookDistance = 14;
   const dirX = Math.sin(galleryState.yaw);
-  const dirY = 0;
   const dirZ = -Math.cos(galleryState.yaw);
 
-  galleryState.lookTarget.x += (galleryState.camera.position.x + dirX * lookDistance - galleryState.lookTarget.x) * 0.12;
-  galleryState.lookTarget.y += (galleryState.camera.position.y + dirY * lookDistance - galleryState.lookTarget.y) * 0.12;
-  galleryState.lookTarget.z += (galleryState.camera.position.z + dirZ * lookDistance - galleryState.lookTarget.z) * 0.12;
+  if (galleryState.focusedMesh) {
+    galleryState.desiredLookTarget.x = GALLERY_FOCUS_STAGE_X;
+    galleryState.desiredLookTarget.y = GALLERY_FOCUS_STAGE_Y + GALLERY_FOCUS_LOOK_Y_OFFSET;
+    galleryState.desiredLookTarget.z = GALLERY_FOCUS_STAGE_Z;
+  } else {
+    galleryState.desiredLookTarget.x = galleryState.camera.position.x + dirX * lookDistance;
+    galleryState.desiredLookTarget.y = galleryState.lookY;
+    galleryState.desiredLookTarget.z = galleryState.camera.position.z + dirZ * lookDistance;
+  }
+
+  galleryState.lookTarget.x += (galleryState.desiredLookTarget.x - galleryState.lookTarget.x) * 0.14;
+  galleryState.lookTarget.y += (galleryState.desiredLookTarget.y - galleryState.lookTarget.y) * 0.16;
+  galleryState.lookTarget.z += (galleryState.desiredLookTarget.z - galleryState.lookTarget.z) * 0.14;
   galleryState.camera.lookAt(
     galleryState.lookTarget.x,
     galleryState.lookTarget.y,
@@ -1015,13 +1659,79 @@ function animateMemoryGallery() {
   );
 
   galleryState.meshes.forEach((mesh, index) => {
-    mesh.position.y = mesh.userData.baseY + Math.sin(time * 1.1 + index * 0.75) * 0.12;
-    mesh.position.x = mesh.userData.baseX + Math.cos(time * 0.7 + index * 0.45) * 0.04;
-    mesh.position.z = mesh.userData.baseZ + Math.sin(time * 0.55 + index * 0.6) * 0.08;
+    const isHovered = galleryState.hoveredMesh === mesh;
+    const isFocused = galleryState.focusedMesh === mesh;
+    const isOccludingFocused = Boolean(
+      galleryState.focusedMesh &&
+      mesh !== galleryState.focusedMesh &&
+      mesh.position.z > galleryState.focusedMesh.position.z + 0.35
+    );
+    const driftY = mesh.userData.baseY + Math.sin(time * 1.1 + index * 0.75) * 0.12;
+    const driftX = mesh.userData.baseX + Math.cos(time * 0.7 + index * 0.45) * 0.04;
+    const driftZ = mesh.userData.baseZ + Math.sin(time * 0.55 + index * 0.6) * 0.08;
+    const targetX = isFocused ? GALLERY_FOCUS_STAGE_X : driftX;
+    const targetY = isFocused ? GALLERY_FOCUS_STAGE_Y : driftY;
+    const targetZ = isFocused ? GALLERY_FOCUS_STAGE_Z : driftZ;
+    const baseScale = mesh.userData.baseScale || 1;
+    const targetScale = isFocused ? Math.max(1.24, baseScale + 0.1) : (isHovered ? baseScale + 0.08 : baseScale);
+
+    mesh.position.x += (targetX - mesh.position.x) * (isFocused ? 0.18 : 0.12);
+    mesh.position.y += (targetY - mesh.position.y) * (isFocused ? 0.18 : 0.14);
+    mesh.position.z += (targetZ - mesh.position.z) * (isFocused ? 0.18 : 0.12);
+    mesh.scale.x += (targetScale - mesh.scale.x) * 0.14;
+    mesh.scale.y += (targetScale - mesh.scale.y) * 0.14;
+    mesh.renderOrder = 0;
+    mesh.material.depthTest = true;
+    mesh.material.opacity += (((isOccludingFocused ? 0.12 : 1) - mesh.material.opacity) * 0.16);
+    if (mesh.userData.borderMesh) {
+      mesh.userData.borderMesh.renderOrder = 1;
+      mesh.userData.borderMesh.material.depthTest = true;
+      mesh.userData.borderMesh.material.opacity += (((isOccludingFocused ? 0.04 : 0.24) - mesh.userData.borderMesh.material.opacity) * 0.16);
+    }
+
+    const targetQuaternion = galleryState.camera.quaternion.clone();
+    mesh.quaternion.slerp(targetQuaternion, isFocused ? 0.16 : 0.12);
   });
+
+  if (galleryState.captionSprite) {
+    const captionMaterial = galleryState.captionSprite.material;
+    const targetOpacity = galleryState.captionSprite.userData.targetOpacity || 0;
+    captionMaterial.opacity += (targetOpacity - captionMaterial.opacity) * 0.14;
+
+    if (galleryState.focusedMesh && galleryState.captionSprite.visible) {
+      galleryState.captionSprite.position.set(
+        GALLERY_FOCUS_STAGE_X,
+        GALLERY_FOCUS_STAGE_Y + GALLERY_CAPTION_Y_OFFSET,
+        GALLERY_FOCUS_STAGE_Z + GALLERY_CAPTION_Z_OFFSET
+      );
+      galleryState.captionSprite.quaternion.copy(galleryState.camera.quaternion);
+    }
+
+    if (!galleryState.focusedMesh) {
+      galleryState.captionSprite.userData.targetOpacity = 0;
+    }
+
+    if (captionMaterial.opacity <= 0.03 && targetOpacity <= 0.03) {
+      galleryState.captionSprite.visible = false;
+    }
+  }
+
+  if (galleryState.raycaster && galleryState.pointer && galleryState.meshes.length) {
+    galleryState.raycaster.setFromCamera(galleryState.pointer, galleryState.camera);
+    const intersects = galleryState.raycaster.intersectObjects(galleryState.meshes);
+    const hoveredMesh = intersects.length ? intersects[0].object : null;
+
+    if (hoveredMesh !== galleryState.hoveredMesh) {
+      galleryState.hoveredMesh = hoveredMesh;
+    }
+  }
 
   if (galleryState.starfield) {
     galleryState.starfield.rotation.y = time * 0.01 + galleryState.yaw * 0.2;
+  }
+
+  if (galleryState.skyDome) {
+    galleryState.skyDome.position.copy(galleryState.camera.position);
   }
 
   if (galleryState.grid) {
@@ -1030,47 +1740,43 @@ function animateMemoryGallery() {
 
   galleryState.renderer.render(galleryState.scene, galleryState.camera);
 }
-
-function showGalleryOverlay(data) {
-  const overlay = document.getElementById('galleryOverlay');
-  document.getElementById('galleryOverlayImage').src = data.imageUrl;
-  document.getElementById('galleryOverlayVoiceCount').textContent = data.voiceCount || 0;
-  overlay.classList.add('active');
-  overlay.setAttribute('aria-hidden', 'false');
-}
-
-function hideGalleryOverlay() {
-  const overlay = document.getElementById('galleryOverlay');
-  overlay.classList.remove('active');
-  overlay.setAttribute('aria-hidden', 'true');
-}
-
 function selectOrigin(el) {
   document.querySelectorAll('.origin-btn').forEach(b => b.classList.remove('sel'));
   el.classList.add('sel');
 }
 
-function handlePhoto(input) {
-  if (!input.files || !input.files[0]) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    document.getElementById('photoImg').src = e.target.result;
-    document.getElementById('uploadArea').style.display = 'none';
-    document.getElementById('photoPreview').style.display = 'block';
-  };
-  reader.readAsDataURL(input.files[0]);
-}
-
-function removePhoto() {
-  document.getElementById('photoImg').src = '';
-  document.getElementById('photoInput').value = '';
-  document.getElementById('uploadArea').style.display = 'block';
-  document.getElementById('photoPreview').style.display = 'none';
-}
-
 let typeTimer = null;
 
+function buildMemoryFallback(text) {
+  const normalized = String(text || '').trim().toLowerCase();
+  let mood = 'reflective';
+
+  if (/(miss|longing|far|away|remember|diaspora|left)/.test(normalized)) mood = 'longing';
+  else if (/(stone|column|ruin|ancient|history|relief)/.test(normalized)) mood = 'reverent';
+  else if (/(light|sun|gold|glow|shadow|dawn|sunset)/.test(normalized)) mood = 'awe';
+  else if (/(father|mother|grandmother|family|child|home)/.test(normalized)) mood = 'tender';
+
+  return `Your memory adds another human trace to Persepolis, carrying texture, atmosphere, and feeling into the gallery.<br>Mood: ${mood}`;
+}
+
+function buildVisualDetailsFallback(memories = []) {
+  const joined = memories.join(' ').toLowerCase();
+  const details = ['weathered stone', 'memory haze', 'quiet atmosphere'];
+
+  if (/(light|sun|glow|shadow|dawn|sunset)/.test(joined)) details.push('long angled light');
+  if (/(dust|air|wind|sand)/.test(joined)) details.push('dust in the air');
+  if (/(blue|night|far|diaspora|away|distance)/.test(joined)) details.push('distant blue-toned mood');
+  if (/(family|father|mother|grandmother|child|home)/.test(joined)) details.push('human warmth carried through the ruins');
+  if (/(column|stairs|relief|stone|ruin)/.test(joined)) details.push('ancient columns and carved stone');
+
+  return Array.from(new Set(details)).slice(0, 6).join(', ');
+}
+
 async function callClaude(text) {
+  if (!ANTHROPIC_KEY) {
+    return buildMemoryFallback(text);
+  }
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -1084,12 +1790,17 @@ async function callClaude(text) {
       max_tokens: 100,
       messages: [{
         role: 'user',
-        content: `Someone left this memory about Persepolis: "${text}"\n\nIn one sentence, describe what sensory or emotional detail this adds to the collective portrait. Then on a new line write just: Mood: [one word]. Be poetic and brief.`
+        content: `Someone left this memory about Persepolis: "${text}"\n\nIn one sentence, describe what sensory or emotional detail this adds to the collective memory gallery. Then on a new line write just: Mood: [one word]. Be poetic and brief.`
       }]
     })
   });
+
+  if (!response.ok) {
+    throw new Error(`Claude request failed with status ${response.status}`);
+  }
+
   const data = await response.json();
-  return data.content[0].text;
+  return data.content?.[0]?.text || buildMemoryFallback(text).replace(/<br>/g, '\n');
 }
 
 function onType() {
@@ -1106,13 +1817,17 @@ function onType() {
       const result = await callClaude(val);
       document.getElementById('aiText').innerHTML = result.replace(/\n/g, '<br>');
     } catch(e) {
-      document.getElementById('aiText').innerHTML = 'Could not read memory right now.';
+      document.getElementById('aiText').innerHTML = buildMemoryFallback(val);
     }
   }, 900);
 }
 
-async function generatePortraitImage(memoriesText) {
-  const basePrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, painted as a romantic orientalist oil painting in the style of Eugene Flandin, warm ochre and sienna palette, golden late afternoon light, no people, no modern elements, consistent composition across generations, ${memoriesText}`;
+async function generatePortraitImage(memoriesText, originSide = 'night') {
+  const normalizedSide = originSide === 'day' ? 'day' : 'night';
+  const iranPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, realistic remembered atmosphere, weathered stone, dusty air, warm ochre and sienna palette, late afternoon light, no people, no modern elements, grounded and place-real, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting, ${memoriesText}`;
+  const diasporaPrompt = `Persepolis Iran, the Apadana staircase seen from the east, the exact same viewpoint every time: camera positioned at ground level 50 meters east of the staircase, looking west, the two rows of columns of the Apadana hall filling the center of the frame, Rahmat mountain directly behind the columns, flat dusty plain in the foreground, dark blue aged memory filter, cooler blue-gray palette, dreamy and softly morphed atmosphere, slightly less realistic, more distant and haunted, subtle blur, haze, faded old-image color cast, poetic remembered place, no people, no modern elements, horizontal landscape composition, full-bleed image, edge-to-edge artwork, no frame, no border, no black bars, no side bars, no letterboxing, no matting, ${memoriesText}`;
+  const basePrompt = normalizedSide === 'day' ? diasporaPrompt : iranPrompt;
+  const imageStyle = normalizedSide === 'day' ? 'natural' : 'vivid';
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
@@ -1124,7 +1839,7 @@ async function generatePortraitImage(memoriesText) {
       prompt: basePrompt,
       n: 1,
       size: '1792x1024',
-      style: 'vivid',
+      style: imageStyle,
       quality: 'standard',
       response_format: 'b64_json'
     })
@@ -1143,35 +1858,58 @@ async function generatePortraitImage(memoriesText) {
   return `data:image/png;base64,${base64}`;
 }
 
-async function updatePortraitWithMemories() {
+async function updatePortraitWithMemories(targetMemory = null) {
   if (!window.loadMemories) return;
   const docs = await window.loadMemories();
   if (docs.length === 0) return;
 
   const recentMemories = docs.slice(0, 5).map(m => m.text).join(', ');
+  let visualDetails = buildVisualDetailsFallback(docs.slice(0, 5).map(m => m.text || ''));
 
-  const moodResponse = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 80,
-      messages: [{
-        role: 'user',
-        content: `These are recent memories people left about Persepolis: "${recentMemories}". Extract 5 to 8 vivid sensory or visual details as a short comma separated list. Only return the list, nothing else.`
-      }]
-    })
-  });
+  if (ANTHROPIC_KEY) {
+    try {
+      const moodResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 80,
+          messages: [{
+            role: 'user',
+            content: `These are recent memories people left about Persepolis: "${recentMemories}". Extract 5 to 8 vivid sensory or visual details as a short comma separated list. Only return the list, nothing else.`
+          }]
+        })
+      });
 
-  const moodData = await moodResponse.json();
-  const visualDetails = moodData.content[0].text;
+      if (moodResponse.ok) {
+        const moodData = await moodResponse.json();
+        visualDetails = moodData.content?.[0]?.text || visualDetails;
+      } else {
+        console.warn('Could not extract visual details from Anthropic response', moodResponse.status);
+      }
+    } catch (error) {
+      console.warn('Could not reach Anthropic for visual details fallback', error);
+    }
+  }
 
-  const imageUrl = await generatePortraitImage(visualDetails);
+  const linkedMemory = targetMemory || docs[0];
+  const linkedOrigin = normalizeOriginTag(linkedMemory?.origin || '');
+  const recentOrigins = docs.slice(0, 8).map(m => resolveSideFromOrigin(m.origin));
+  const dayCount = recentOrigins.filter(side => side === 'day').length;
+  const majoritySide = dayCount > recentOrigins.length / 2 ? 'day' : 'night';
+  const portraitSide = linkedMemory ? resolveSideFromOrigin(linkedOrigin) : majoritySide;
+  const portraitOrigin = linkedMemory
+    ? linkedOrigin
+    : (portraitSide === 'day' ? 'in the diaspora' : 'from Iran');
+  const linkedMemoryId = linkedMemory?.id || '';
+  const linkedMemoryText = linkedMemory?.text || '';
+
+  const imageUrl = await generatePortraitImage(visualDetails, portraitSide);
   try {
     await renderImageOnCanvas(imageUrl);
     if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
@@ -1182,17 +1920,34 @@ async function updatePortraitWithMemories() {
   
   document.getElementById('portraitCaption').textContent = `"${visualDetails}"`;
   const firestoreImageUrl = await compressImageForFirestore(imageUrl);
-  cachePortraitLocally(firestoreImageUrl || imageUrl, docs.length);
+  cachePortraitLocally(
+    firestoreImageUrl || imageUrl,
+    docs.length,
+    visualDetails,
+    Date.now(),
+    portraitOrigin,
+    portraitSide,
+    linkedMemoryId,
+    linkedMemoryText
+  );
   portraitsHistory = mergePortraitSources(portraitsHistory);
   initMemoryGallery(portraitsHistory);
   if (firestoreImageUrl) {
-    await saveImageToFirebase(firestoreImageUrl, docs.length);
+    await saveImageToFirebase(
+      firestoreImageUrl,
+      docs.length,
+      visualDetails,
+      portraitOrigin,
+      portraitSide,
+      linkedMemoryId,
+      linkedMemoryText
+    );
   } else {
     console.warn('Skipping Firestore save because the generated image could not be compressed under the Firestore size limit.');
   }
 }
 
-async function saveImageToFirebase(imageUrl, voiceCount) {
+async function saveImageToFirebase(imageUrl, voiceCount, caption = '', origin = 'from Iran', side = 'night', memoryId = '', memoryText = '') {
   if (!window.firebaseReady) return;
   if (!isUsablePortraitImage(imageUrl)) return;
   if (new Blob([imageUrl]).size > 1000000) {
@@ -1201,8 +1956,13 @@ async function saveImageToFirebase(imageUrl, voiceCount) {
   }
   const { collection, addDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
   await addDoc(collection(window.db, 'portraits'), {
+    memoryId: memoryId,
+    memoryText: memoryText,
     imageUrl: imageUrl,
     voiceCount: voiceCount,
+    caption: caption,
+    origin: normalizeOriginTag(origin),
+    side: side === 'day' ? 'day' : 'night',
     timestamp: new Date()
   });
   loadPortraitHistory();
@@ -1229,9 +1989,10 @@ loadLatestPortrait = async function() {
   if (!latest) return;
 
   await renderImageOnCanvas(latest.imageUrl);
+  document.getElementById('portraitCaption').textContent = `"${resolvePortraitCaption(latest)}"`;
   if (morphAnim) { cancelAnimationFrame(morphAnim); morphAnim = null; }
   if (latest.voiceCount) {
-    document.getElementById('portraitMeta').textContent = latest.voiceCount + ' voices Â· updated recently';
+    document.getElementById('portraitMeta').textContent = latest.voiceCount + ' voices';
   }
 };
 
@@ -1276,7 +2037,7 @@ loadPortraitHistory = async function() {
     lbl.textContent = p.voiceCount + ' voices';
     wrap.appendChild(thumb);
     wrap.appendChild(lbl);
-    wrap.onclick = () => showPortraitVersion(p.imageUrl, p.voiceCount);
+    wrap.onclick = () => showPortraitVersion(p.imageUrl, p.voiceCount, resolveDisplayedMemoryText(p));
     row.appendChild(wrap);
   });
 
@@ -1289,15 +2050,46 @@ async function submitMemory() {
   const val = document.getElementById('memInput').value.trim();
   if (!val) return;
   const origin = document.querySelector('.origin-btn.sel')?.textContent || 'anonymous';
+  const submitButton = document.querySelector('.submit-btn');
+  const successTitle = document.getElementById('successTitle');
+  const successBody = document.getElementById('successBody');
+  let savedMemory = null;
 
-  if (window.saveMemory) {
-    await window.saveMemory(val, origin);
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'saving...';
   }
 
-  document.getElementById('submitSection').style.display = 'none';
-  document.getElementById('successState').classList.add('show');
+  try {
+    if (window.saveMemory) {
+      savedMemory = await window.saveMemory(val, origin);
+    }
 
-  updatePortraitWithMemories();
+    document.getElementById('submitSection').style.display = 'none';
+    document.getElementById('successState').classList.add('show');
+    if (successTitle) successTitle.textContent = 'Your memory has been left.';
+    if (successBody) {
+      successBody.innerHTML = 'Generating the new image now...<br>This can take a short moment.';
+    }
+
+    await buildMemFeed();
+    await updatePortraitWithMemories(savedMemory);
+
+    if (successBody) {
+      successBody.innerHTML = 'It is now part of Vigil\'s collective memory gallery.<br>The image has shifted with this new memory.';
+    }
+  } catch (error) {
+    console.error('submit/generation error', error);
+    document.getElementById('submitSection').style.display = '';
+    document.getElementById('successState').classList.remove('show');
+    document.getElementById('aiFeedback').classList.add('show');
+    document.getElementById('aiText').innerHTML = 'Your comment was saved, but the new image could not be generated right now.';
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = 'leave this memory';
+    }
+  }
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────────
@@ -1306,9 +2098,10 @@ function openCompose() {
   document.body.classList.add('compose-open');
   document.getElementById('aiFeedback').classList.remove('show');
   document.getElementById('successState').classList.remove('show');
+  document.getElementById('successTitle').textContent = 'Your memory has been left.';
+  document.getElementById('successBody').innerHTML = 'It is now part of Vigil\'s collective memory gallery.<br>The image will shift with the next generation.';
   document.getElementById('submitSection').style.display = '';
   document.getElementById('memInput').value = '';
-  removePhoto();
 }
 
 function closeCompose() {
@@ -1324,6 +2117,21 @@ function openAbout() {
 function closeAbout() {
   document.getElementById('page-about').classList.remove('active');
   document.body.classList.remove('about-open');
+}
+
+function toggleMemoryPanel(show) {
+  const panel = document.getElementById('memoryCol');
+  const reopen = document.getElementById('memReopen');
+  if (!panel || !reopen) return;
+
+  panel.classList.toggle('is-hidden', !show);
+  reopen.classList.toggle('show', !show);
+  if (show) {
+    setMemoryPanelExpanded(false);
+  } else if (memoryPanelState.intervalId) {
+    window.clearInterval(memoryPanelState.intervalId);
+    memoryPanelState.intervalId = null;
+  }
 }
 
 function showPage(id) {
@@ -1385,8 +2193,6 @@ setTimeout(() => {
   }, 1000);
 }, 100);
 
-document.getElementById('galleryOverlayBackdrop').addEventListener('click', hideGalleryOverlay);
-document.getElementById('galleryOverlayClose').addEventListener('click', hideGalleryOverlay);
 document.getElementById('page-compose').addEventListener('click', (event) => {
   if (event.target.id === 'page-compose') closeCompose();
 });
@@ -1403,7 +2209,6 @@ document.querySelector('.success-link')?.addEventListener('click', (event) => {
 });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
-    hideGalleryOverlay();
     closeCompose();
     closeAbout();
   }
