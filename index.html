@@ -252,8 +252,7 @@ let memoryFeedData = memories.map((memory, index) => ({
   text: memory.text,
   label: memory.time || 'recently',
   mood: memory.mood || 'memory',
-  origin: memory.from || 'from Iran',
-  side: String(memory.from || '').toLowerCase().includes('diaspora') ? 'day' : 'night',
+  origin: normalizeOriginTag(memory.from || 'from Iran'),
   index
 }));
 const memoryPanelState = {
@@ -533,13 +532,22 @@ function normalizeOriginTag(origin = '') {
   return 'from Iran';
 }
 
-function resolveSideFromOrigin(origin = '') {
-  return normalizeOriginTag(origin) === 'in the diaspora' ? 'day' : 'night';
+const ORIGIN_TO_SKY_SIDE = {
+  'from Iran': 'night',
+  'in the diaspora': 'day'
+};
+
+function getSkySideFromOrigin(origin = '') {
+  return ORIGIN_TO_SKY_SIDE[normalizeOriginTag(origin)] || 'night';
+}
+
+function originFromLegacySide(side = '') {
+  return String(side || '').trim().toLowerCase() === 'day' ? 'in the diaspora' : 'from Iran';
 }
 
 function inferPortraitSide(record, fallbackIndex = 0, totalCount = 1) {
-  if (record?.side === 'day' || record?.side === 'night') return record.side;
-  if (record?.origin) return resolveSideFromOrigin(record.origin);
+  if (record?.origin) return getSkySideFromOrigin(record.origin);
+  if (record?.side === 'day' || record?.side === 'night') return getSkySideFromOrigin(originFromLegacySide(record.side));
   if (!memoryFeedData.length) return 'night';
 
   const total = Math.max(1, totalCount);
@@ -552,11 +560,12 @@ function inferPortraitSide(record, fallbackIndex = 0, totalCount = 1) {
           Math.round((fallbackIndex / (total - 1)) * (memoryFeedData.length - 1))
         )
       );
-  return memoryFeedData[memoryIndex]?.side || 'night';
+  return getSkySideFromOrigin(memoryFeedData[memoryIndex]?.origin);
 }
 
 function normalizePortraitRecord(record) {
   if (!record || !isUsablePortraitImage(record.imageUrl)) return null;
+  const origin = normalizeOriginTag(record.origin || originFromLegacySide(record.side));
   return {
     memoryId: typeof record.memoryId === 'string' ? record.memoryId : '',
     memoryText: typeof record.memoryText === 'string' ? record.memoryText : '',
@@ -564,10 +573,8 @@ function normalizePortraitRecord(record) {
     voiceCount: record.voiceCount || 0,
     caption: resolvePortraitCaption(record),
     timestamp: serializeTimestamp(record.timestamp),
-    origin: normalizeOriginTag(record.origin || record.side || ''),
-    side: record.side === 'day' || record.side === 'night'
-      ? record.side
-      : resolveSideFromOrigin(record.origin || record.side || '')
+    origin,
+    side: getSkySideFromOrigin(origin)
   };
 }
 
@@ -606,8 +613,8 @@ function resolveDisplayedMemoryText(record) {
 function shouldHideAccidentalPortrait(record) {
   const accidentalComment = `Persepolis has been closed to the public because of the war. I can't wait for it to be over to visit there.`;
   const memoryText = String(record?.memoryText || '').trim();
-  const origin = normalizeOriginTag(record?.origin || '');
-  const side = record?.side === 'day' || record?.side === 'night' ? record.side : resolveSideFromOrigin(origin);
+  const origin = normalizeOriginTag(record?.origin || originFromLegacySide(record?.side || ''));
+  const side = getSkySideFromOrigin(origin);
 
   return memoryText === accidentalComment && origin === 'from Iran' && side === 'night';
 }
@@ -637,8 +644,8 @@ function writeLocalPortraitCache(portraits) {
   }
 }
 
-function cachePortraitLocally(imageUrl, voiceCount, caption = '', timestamp = Date.now(), origin = 'from Iran', side = 'night', memoryId = '', memoryText = '') {
-  const portrait = normalizePortraitRecord({ imageUrl, voiceCount, caption, timestamp, origin, side, memoryId, memoryText });
+function cachePortraitLocally(imageUrl, voiceCount, caption = '', timestamp = Date.now(), origin = 'from Iran', memoryId = '', memoryText = '') {
+  const portrait = normalizePortraitRecord({ imageUrl, voiceCount, caption, timestamp, origin, memoryId, memoryText });
   if (!portrait) return;
 
   const existing = readLocalPortraitCache().filter(item => {
@@ -675,8 +682,7 @@ function mergePortraitSources(firestorePortraits = []) {
         voiceCount: Math.max(existing.voiceCount || 0, item.voiceCount || 0),
         caption: existing.caption || item.caption || resolvePortraitCaption(item),
         timestamp: Math.min(existing.timestamp || item.timestamp, item.timestamp || existing.timestamp),
-        origin: existing.origin || item.origin,
-        side: existing.side || item.side
+        origin: normalizeOriginTag(existing.origin || item.origin || originFromLegacySide(existing.side || item.side))
       });
     });
 
@@ -748,13 +754,15 @@ function createGallerySkyDome() {
   const nightGradient = context.createLinearGradient(0, 0, canvas.width, 0);
   nightGradient.addColorStop(0, '#02050b');
   nightGradient.addColorStop(0.34, '#07101c');
-  nightGradient.addColorStop(0.58, '#0e1a2d');
-  nightGradient.addColorStop(0.71, '#212739');
-  nightGradient.addColorStop(0.735, '#454147');
-  nightGradient.addColorStop(0.755, '#6d584f');
-  nightGradient.addColorStop(0.81, '#8f6b4f');
-  nightGradient.addColorStop(0.9, '#ba895c');
-  nightGradient.addColorStop(1, '#7c5d47');
+  nightGradient.addColorStop(0.56, '#0e1a2d');
+  nightGradient.addColorStop(0.67, '#212739');
+  nightGradient.addColorStop(0.715, '#3a3b44');
+  nightGradient.addColorStop(0.755, '#5e504a');
+  nightGradient.addColorStop(0.82, '#8f6b4f');
+  nightGradient.addColorStop(0.89, '#ba895c');
+  nightGradient.addColorStop(0.94, '#7c5d47');
+  nightGradient.addColorStop(0.975, '#26313f');
+  nightGradient.addColorStop(1, '#02050b');
   context.fillStyle = nightGradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -766,10 +774,10 @@ function createGallerySkyDome() {
   context.fillStyle = verticalFade;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  const sunsetGlow = context.createRadialGradient(canvas.width * 0.86, canvas.height * 0.46, 18, canvas.width * 0.86, canvas.height * 0.46, 180);
-  sunsetGlow.addColorStop(0, 'rgba(247, 194, 133, 0.34)');
-  sunsetGlow.addColorStop(0.34, 'rgba(214, 134, 76, 0.2)');
-  sunsetGlow.addColorStop(0.68, 'rgba(255, 178, 110, 0.035)');
+  const sunsetGlow = context.createRadialGradient(canvas.width * 0.84, canvas.height * 0.46, 18, canvas.width * 0.84, canvas.height * 0.46, 220);
+  sunsetGlow.addColorStop(0, 'rgba(247, 194, 133, 0.28)');
+  sunsetGlow.addColorStop(0.42, 'rgba(214, 134, 76, 0.16)');
+  sunsetGlow.addColorStop(0.78, 'rgba(255, 178, 110, 0.05)');
   sunsetGlow.addColorStop(1, 'rgba(255, 170, 112, 0)');
   context.fillStyle = sunsetGlow;
   context.fillRect(0, 0, canvas.width, canvas.height);
@@ -841,7 +849,7 @@ function buildDisplayPortraits(portraits) {
     caption: portrait.caption || resolvePortraitCaption(portrait),
     timestamp: portrait.timestamp || Date.now(),
     displayIndex: index,
-    origin: normalizeOriginTag(portrait.origin || portrait.side || ''),
+    origin: normalizeOriginTag(portrait.origin || originFromLegacySide(portrait.side || '')),
     side: inferPortraitSide(portrait, index, filtered.length)
   }));
 }
@@ -1063,8 +1071,8 @@ function startAutoMorph(from, to) {
 async function buildMemFeed() {
   const list = document.getElementById('memList');
   const renderGroupedMemories = items => {
-    const nightItems = items.filter(item => item.side === 'night');
-    const dayItems = items.filter(item => item.side === 'day');
+    const nightItems = items.filter(item => getSkySideFromOrigin(item.origin) === 'night');
+    const dayItems = items.filter(item => getSkySideFromOrigin(item.origin) === 'day');
     const sections = [
       { title: 'night · from Iran', items: nightItems },
       { title: 'day · diaspora', items: dayItems }
@@ -1094,7 +1102,6 @@ async function buildMemFeed() {
         text: m.text || '',
         label: 'recently',
         origin: normalizeOriginTag(m.origin),
-        side: resolveSideFromOrigin(m.origin),
         index
       }));
       renderGroupedMemories(memoryFeedData);
@@ -1108,7 +1115,6 @@ async function buildMemFeed() {
     text: m.text || '',
     label: m.time || 'recently',
     origin: normalizeOriginTag(m.from),
-    side: resolveSideFromOrigin(m.from),
     index
   }));
   renderGroupedMemories(memoryFeedData);
@@ -1430,7 +1436,7 @@ function buildGalleryMeshes(portraits) {
   };
 
   portraits.forEach((portrait, index) => {
-    const side = portrait.side === 'day' ? 'day' : 'night';
+    const side = getSkySideFromOrigin(portrait.origin);
     latestBySide[side] = index;
     sideIndices[side].push(index);
   });
@@ -1460,7 +1466,7 @@ function buildGalleryMeshes(portraits) {
 
       const progress = total === 1 ? 1 : index / (total - 1);
       const isOpeningPair = total === 2;
-      const side = portrait.side === 'day' ? 'day' : 'night';
+      const side = getSkySideFromOrigin(portrait.origin);
       const sideOrder = sideIndices[side].indexOf(index);
       const rankFromLatest = sideOrder === -1 ? 0 : (sideIndices[side].length - 1 - sideOrder);
       const depthBands = [-8.2, -11.8, 1.4];
@@ -1504,7 +1510,7 @@ function buildGalleryMeshes(portraits) {
         voiceCount: portrait.voiceCount || 0,
         caption: portrait.caption || resolvePortraitCaption(portrait),
         index,
-        origin: portrait.origin || normalizeOriginTag(portrait.side || ''),
+        origin: normalizeOriginTag(portrait.origin || originFromLegacySide(portrait.side || '')),
         side,
         baseX: x,
         baseY: y,
@@ -1898,14 +1904,8 @@ async function updatePortraitWithMemories(targetMemory = null) {
   }
 
   const linkedMemory = targetMemory || docs[0];
-  const linkedOrigin = normalizeOriginTag(linkedMemory?.origin || '');
-  const recentOrigins = docs.slice(0, 8).map(m => resolveSideFromOrigin(m.origin));
-  const dayCount = recentOrigins.filter(side => side === 'day').length;
-  const majoritySide = dayCount > recentOrigins.length / 2 ? 'day' : 'night';
-  const portraitSide = linkedMemory ? resolveSideFromOrigin(linkedOrigin) : majoritySide;
-  const portraitOrigin = linkedMemory
-    ? linkedOrigin
-    : (portraitSide === 'day' ? 'in the diaspora' : 'from Iran');
+  const portraitOrigin = normalizeOriginTag(linkedMemory?.origin || 'from Iran');
+  const portraitSide = getSkySideFromOrigin(portraitOrigin);
   const linkedMemoryId = linkedMemory?.id || '';
   const linkedMemoryText = linkedMemory?.text || '';
 
@@ -1926,7 +1926,6 @@ async function updatePortraitWithMemories(targetMemory = null) {
     visualDetails,
     Date.now(),
     portraitOrigin,
-    portraitSide,
     linkedMemoryId,
     linkedMemoryText
   );
@@ -1938,7 +1937,6 @@ async function updatePortraitWithMemories(targetMemory = null) {
       docs.length,
       visualDetails,
       portraitOrigin,
-      portraitSide,
       linkedMemoryId,
       linkedMemoryText
     );
@@ -1947,7 +1945,7 @@ async function updatePortraitWithMemories(targetMemory = null) {
   }
 }
 
-async function saveImageToFirebase(imageUrl, voiceCount, caption = '', origin = 'from Iran', side = 'night', memoryId = '', memoryText = '') {
+async function saveImageToFirebase(imageUrl, voiceCount, caption = '', origin = 'from Iran', memoryId = '', memoryText = '') {
   if (!window.firebaseReady) return;
   if (!isUsablePortraitImage(imageUrl)) return;
   if (new Blob([imageUrl]).size > 1000000) {
@@ -1962,7 +1960,6 @@ async function saveImageToFirebase(imageUrl, voiceCount, caption = '', origin = 
     voiceCount: voiceCount,
     caption: caption,
     origin: normalizeOriginTag(origin),
-    side: side === 'day' ? 'day' : 'night',
     timestamp: new Date()
   });
   loadPortraitHistory();
